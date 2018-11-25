@@ -154,7 +154,7 @@ class homework1
             {
                 if(p_tree != null && p_tree.right != null && p_tree.right.value.contains("identifier"))
                 {
-                    System.out.println("ind");
+                    System.out.println("ind");  //TODO: some ind are missing
                 }
             }
 
