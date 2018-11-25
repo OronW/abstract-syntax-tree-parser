@@ -287,7 +287,7 @@ class homework1
 
             case "identifier":
             {
-                if((p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //todo: check if needed - if statment used for testings
+                if((p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //todo: check if needed-if statment used for testings
                     System.out.println("ldc " + p_symbolTable.m_SymbolTable.get(p_tree.left.value).Address);
                 break;
             }
