@@ -125,8 +125,10 @@ class homework1
                     new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
                     new_variable.SetName(p_tree.left.left.value);
                     new_variable.SetAddress(p_symbolTable.CurrentAvailableAddress);
-                    if(recordFlag==true) {
-                        new_variable.SetOffset(offsetValue++);
+
+                    if(recordFlag==true) {          //<ORON> deal with offset
+                        new_variable.SetOffset(offsetValue);
+                        offsetValue = offsetValue + new_variable.GetSize();
                     }
 
                     p_symbolTable.CurrentAvailableAddress += new_variable.Size;
