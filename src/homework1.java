@@ -7,6 +7,8 @@ class homework1
 {
     // Properties
     private static int m_LableNumber = 0; // Labels counter for the Pcode
+    public static boolean recordFlag = false;   // flag to indicate we are inside a record and update offset value
+    public static int offsetValue = 0;
 
     // Classes
 
@@ -41,7 +43,7 @@ class homework1
         public String Name;
         public String Type;
         public int Address;
-        //public int offset; //<ORON> TODO: check if really needed for every variable
+        public int Offset; //<ORON> TODO: check if really needed for every variable
 
 
 
@@ -57,6 +59,7 @@ class homework1
             return Type;
         }
         public void SetType(String p_newType){Type = p_newType;}
+        public void SetOffset(int p_offset) {Offset = p_offset;}    //<ORON>
     }
 
     static final class SymbolTable
@@ -106,18 +109,26 @@ class homework1
 
                 if ((p_tree.right.value!= null) && (p_tree.right.value.equals("record")))
                 {
-                    while(p_tree.value.equals("record"))
                     {
-                        FillSymbolTable(p_symbolTable,p_tree.left); // Re-enter the fill function. Check left sub-tree...
+                        recordFlag = true;
+                        FillSymbolTable(p_symbolTable,p_tree.right.left); // Re-enter the fill function. Check left sub-tree...
+
+                        recordFlag = false; //reset the offset
+                        offsetValue = 0;
                     }
                 }
                 else {/**<ORON> TODO: end of added changes 25/11*/
+
                     Variable new_variable = new Variable();
                     new_variable.SetType(p_tree.right.value);
 
                     new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
                     new_variable.SetName(p_tree.left.left.value);
                     new_variable.SetAddress(p_symbolTable.CurrentAvailableAddress);
+                    if(recordFlag==true) {
+                        new_variable.SetOffset(offsetValue++);
+                    }
+
                     p_symbolTable.CurrentAvailableAddress += new_variable.Size;
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
                     return;
@@ -209,6 +220,9 @@ class homework1
                 CheckIfInd(p_tree,0); // checks if left sub-tree has identifier
                 break;
             }
+
+
+
             default: break;
         }
         //endregion
@@ -262,6 +276,12 @@ class homework1
                 CheckIfInd(p_tree,1); // checks if left sub-tree has identifier
                 break;
             }
+
+            /*case "identifier":
+            {
+                System.out.println("inc " + (p_symbolTable.m_SymbolTable.get(p_tree.left.value)).Offset);
+                break;
+            }*/
             default: break;
         }
         //endregion
@@ -285,9 +305,16 @@ class homework1
                 break;
             }
 
+            //TODO: new code added here for record
+            case "record":
+            {
+                System.out.println("inc " + (p_symbolTable.m_SymbolTable.get(p_tree.right.left.value)).Offset);
+                break;
+            }
+
             case "identifier":
             {
-                if((p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //todo: check if needed-if statment used for testings
+                if((p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //todo: check if needed - this if statment is used for testings
                     System.out.println("ldc " + p_symbolTable.m_SymbolTable.get(p_tree.left.value).Address);
                 break;
             }
