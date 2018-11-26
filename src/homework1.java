@@ -9,6 +9,7 @@ class homework1
     private static int m_LableNumber = 0; // Labels counter for the Pcode
     public static boolean recordFlag = false;   // flag to indicate we are inside a record and update offset value
     public static int offsetValue = 0;
+    public static boolean rightTreeSide = true;
 
     // Classes
 
@@ -102,14 +103,23 @@ class homework1
             if(p_tree.value.equals("var"))
             {
                 /**<ORON> TODO: new code here - if record do... else act normal:*/
-                if ((p_tree.right.value!= null) && (p_tree.right.value.equals("array"))) // TODO: currently empty - fill
+               /* if ((p_tree.right.value!= null) && (p_tree.right.value.equals("array"))) // TODO: currently empty - fill
                 {
+                    p_symbolTable.CurrentAvailableAddress+=1;
                     return;
-                }
+                }*/
 
                 if ((p_tree.right.value!= null) && (p_tree.right.value.equals("record")))
                 {
-                    {
+                    {   //create the variable for record FIRST, so it will get an address
+                        Variable new_variable = new Variable();
+                        new_variable.SetType(p_tree.right.value);
+                        new_variable.SetAddress(p_symbolTable.CurrentAvailableAddress);
+                        new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
+                        new_variable.SetName(p_tree.left.left.value);
+                        p_symbolTable.CurrentAvailableAddress += new_variable.Size;
+                        p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
+
                         recordFlag = true;
                         FillSymbolTable(p_symbolTable,p_tree.right.left); // Re-enter the fill function. Check left sub-tree...
 
@@ -122,9 +132,14 @@ class homework1
                     Variable new_variable = new Variable();
                     new_variable.SetType(p_tree.right.value);
 
+                    if(p_tree.right.value.equals("pointer"))
+                    {
+                       new_variable.SetAddress(p_symbolTable.m_SymbolTable.get(p_tree.right.left.left.value).GetAddress());
+                    }
+                    else new_variable.SetAddress(p_symbolTable.CurrentAvailableAddress);
+
                     new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
                     new_variable.SetName(p_tree.left.left.value);
-                    new_variable.SetAddress(p_symbolTable.CurrentAvailableAddress);
 
                     if(recordFlag==true) {          //<ORON> deal with offset
                         new_variable.SetOffset(offsetValue);
@@ -192,6 +207,7 @@ class homework1
             System.out.println("L" + label_1 + ":");
             MakePcode(p_tree.left,p_symbolTable);
             System.out.println("fjp L" + label_2);
+
             MakePcode(p_tree.right,p_symbolTable);
             System.out.println("ujp L" + label_1);
             System.out.println("L" + label_2 + ":");
@@ -256,7 +272,12 @@ class homework1
         //endregion
 
         //region Generate Right SubTree
+        if (p_tree.value.equals("record"))
+            rightTreeSide = false;  //TODO where is the exit of the flag??
         MakePcode(p_tree.right, p_symbolTable);
+        if (p_tree.value.equals("record"))
+            rightTreeSide = true;
+
         switch (currentValue)
         {
             case "plus":
@@ -318,7 +339,7 @@ class homework1
 
             case "identifier":
             {
-                if((p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //todo: check if needed - this if statment is used for testings
+                if((rightTreeSide) && (p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //todo: check if needed - this if statment is used for testings
                     System.out.println("ldc " + p_symbolTable.m_SymbolTable.get(p_tree.left.value).Address);
                 break;
             }
