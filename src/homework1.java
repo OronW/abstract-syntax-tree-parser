@@ -169,6 +169,8 @@ class homework1
                 {
                     System.out.println("ind");  //TODO: some ind are missing
                 }
+                else if(p_tree != null && p_tree.right != null && p_tree.right.value.contains("record"))   //<ORON>
+                    CheckIfInd(p_tree.right, 1);
             }
 
         }
@@ -365,6 +367,7 @@ class homework1
                 System.out.println("geq");
                 break;
             case "assignment":
+                CheckIfInd(p_tree.right, 1);   //<ORON>
                 System.out.println("sto");
                 break;
             case "print":
