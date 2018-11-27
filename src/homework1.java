@@ -11,6 +11,9 @@ class homework1
     public static int offsetValue = 0;
     public static boolean rightTreeSide = true;
 
+    public static int CurrentAvailableAddress;
+    public static final int TABLE_START_ADDRESS = 5;
+
     // Classes
 
     // Abstract Syntax Tree
@@ -67,8 +70,8 @@ class homework1
     {
         // Properties
         public Hashtable<String, Variable> m_SymbolTable;         /**<LEEOR> TODO: change to Map or Dictionary  <ORON> Why should we change?</>**/
-    public static int CurrentAvailableAddress;
-        public static final int TABLE_START_ADDRESS = 5;
+        //public static int CurrentAvailableAddress;            //TODO: this has moved to be a global variable
+        //public static final int TABLE_START_ADDRESS = 5;
 
         // C'tor
         public SymbolTable()
@@ -102,42 +105,37 @@ class homework1
 
             if(p_tree.value.equals("var"))
             {
-                /**<ORON> TODO: new code here - if record do... else act normal:*/
-               /* if ((p_tree.right.value!= null) && (p_tree.right.value.equals("array"))) // TODO: currently empty - fill
+
+                /**<ORON> TODO: fill code for array:*/
+                /* if ((p_tree.right.value!= null) && (p_tree.right.value.equals("array"))) // TODO: currently empty - fill
                 {
                     p_symbolTable.CurrentAvailableAddress+=1;
                     return;
                 }*/
 
+               /**<ORON> TODO: new code here - if record, do... else act normal:*/
                 if ((p_tree.right.value!= null) && (p_tree.right.value.equals("record")))
                 {
-                    {   //create the variable for record FIRST, so it will get an address
-                        Variable new_variable = new Variable();
-                        new_variable.SetType(p_tree.right.value);
-                        new_variable.SetAddress(p_symbolTable.CurrentAvailableAddress);
-                        new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
-                        new_variable.SetName(p_tree.left.left.value);
-                        p_symbolTable.CurrentAvailableAddress += new_variable.Size;
-                        p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
-
-                        recordFlag = true;
-                        FillSymbolTable(p_symbolTable,p_tree.right.left); // Re-enter the fill function. Check left sub-tree...
-
-                        recordFlag = false; //reset the offset
-                        offsetValue = 0;
-                    }
-                }
-                else {/**<ORON> TODO: end of added changes 25/11*/
-
+                    //create the variable for record FIRST, so it will get an address
                     Variable new_variable = new Variable();
                     new_variable.SetType(p_tree.right.value);
+                    new_variable.SetAddress(CurrentAvailableAddress);
+                    new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
+                    new_variable.SetName(p_tree.left.left.value);
+                    //CurrentAvailableAddress += new_variable.Size;//TODO: DO NOT increase the address size. record does not hold it's own address
+                    p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
 
-                    if(p_tree.right.value.equals("pointer"))
-                    {
-                       new_variable.SetAddress(p_symbolTable.m_SymbolTable.get(p_tree.right.left.left.value).GetAddress());
-                    }
-                    else new_variable.SetAddress(p_symbolTable.CurrentAvailableAddress);
+                    recordFlag = true;  //recordFlag is the condition to set variable offset. it means we are inside a record
+                    FillSymbolTable(p_symbolTable,p_tree.right.left); // Re-enter the fill function. Check left sub-tree...
+                    recordFlag = false; //exit "record mode" and reset the offset
+                    offsetValue = 0;
+                }
 
+                else
+                {
+                    Variable new_variable = new Variable();
+                    new_variable.SetType(p_tree.right.value);
+                    new_variable.SetAddress(CurrentAvailableAddress);
                     new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
                     new_variable.SetName(p_tree.left.left.value);
 
@@ -146,7 +144,7 @@ class homework1
                         offsetValue = offsetValue + new_variable.GetSize();
                     }
 
-                    p_symbolTable.CurrentAvailableAddress += new_variable.Size;
+                    CurrentAvailableAddress += new_variable.Size;
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
                     return;
                 }
@@ -159,6 +157,18 @@ class homework1
     private static void generatePCode(AST ast, SymbolTable symbolTable)
     {
         // TODO: go over AST and print code
+
+        //TODO: this code will be deleted. use it to check variable address. see it in console.
+        System.out.println("\n*******************************************");    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("********      ADDRESS TESTING     *********\n");    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of f:" + symbolTable.m_SymbolTable.get("f").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of e:" + symbolTable.m_SymbolTable.get("e").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of d:" + symbolTable.m_SymbolTable.get("d").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of c:" + symbolTable.m_SymbolTable.get("c").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of b:" + symbolTable.m_SymbolTable.get("b").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("\n*********  END OF ADDRESS TESTING  ********");    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("*******************************************\n");    //TODO: REMOVE THIS. used to check if assigned address is correct
+
 
         if(ast.right.value.equals("content") && ast.right.right != null)
         {
@@ -182,7 +192,7 @@ class homework1
             {
                 if(p_tree != null && p_tree.right != null && p_tree.right.value.contains("identifier"))
                 {
-                    System.out.println("ind");  //TODO: some ind are missing
+                    System.out.println("ind");  //TODO: some ind are missing, check again after we finish HW2
                 }
                 else if(p_tree != null && p_tree.right != null && p_tree.right.value.contains("record"))   //<ORON>
                     CheckIfInd(p_tree.right, 1);
@@ -191,6 +201,7 @@ class homework1
         }
 
     }
+
 
     private static void MakePcode(AST p_tree, SymbolTable p_symbolTable)
     {
@@ -241,8 +252,6 @@ class homework1
                 break;
             }
 
-
-
             default: break;
         }
         //endregion
@@ -273,7 +282,7 @@ class homework1
 
         //region Generate Right SubTree
         if (p_tree.value.equals("record"))
-            rightTreeSide = false;  //TODO where is the exit of the flag??
+            rightTreeSide = false;  //This variable fix the unwanted "ldc" print of right hand son
         MakePcode(p_tree.right, p_symbolTable);
         if (p_tree.value.equals("record"))
             rightTreeSide = true;
@@ -302,11 +311,6 @@ class homework1
                 break;
             }
 
-            /*case "identifier":
-            {
-                System.out.println("inc " + (p_symbolTable.m_SymbolTable.get(p_tree.left.value)).Offset);
-                break;
-            }*/
             default: break;
         }
         //endregion
@@ -330,16 +334,22 @@ class homework1
                 break;
             }
 
-            //TODO: new code added here for record
+            //TODO: new code added here for pointer and record
+            case "pointer":
+            {
+                System.out.println("ind"); //TODO: should there be a null check here?  "pointer" is always ind...
+                break;
+            }
+
             case "record":
             {
-                System.out.println("inc " + (p_symbolTable.m_SymbolTable.get(p_tree.right.left.value)).Offset);
+                System.out.println("inc " + (p_symbolTable.m_SymbolTable.get(p_tree.right.left.value)).Offset); //TODO: Add condition for record of records
                 break;
             }
 
             case "identifier":
             {
-                if((rightTreeSide) && (p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //todo: check if needed - this if statment is used for testings
+                if((rightTreeSide) && (p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //This if statement fix the unwanted "ldc" print for right hand son
                     System.out.println("ldc " + p_symbolTable.m_SymbolTable.get(p_tree.left.value).Address);
                 break;
             }
