@@ -178,10 +178,16 @@ class homework1
                     Variable new_variable = new Variable();
                     new_variable.SetName(p_tree.left.left.value);
                     new_variable.SetAddress(CurrentAvailableAddress);
-                    new_variable.SetType(p_tree.right.right.left.value);
+                    if((p_tree.right.right!= null) && (p_tree.right.right.equals("identifier")))
+                    {
+                        new_variable.SetType(p_tree.right.right.left.value);
+                    }
+                    else
+                        {new_variable.SetType(p_tree.right.right.value);}
+
                     FillSymbolTable(p_symbolTable, p_tree.right.left);
 
-                    new_variable.dimensionsList.addAll((ArrayList<Dimension>)GlobalDimList);
+                    new_variable.dimensionsList.addAll(GlobalDimList);
                     int totalArraySize = 0;
                     for (int i=0; i< new_variable.dimensionsList.size(); i++ )
                     {
@@ -190,14 +196,7 @@ class homework1
                     CurrentAvailableAddress += totalArraySize;
                     new_variable.SetSize(totalArraySize);
 
-                    new_variable.SetType(p_tree.right.right.left.value);
-                    //new_variable.SetAddress(CurrentAvailableAddress);
 
-                    //TODO: MAGIC
-
-                    new_variable.SetSize(1); //TODO add gestSize function
-
-                    return;
                 }
 
                /**<ORON> TODO: new code here - if record, do... else act normal:*/
@@ -240,6 +239,17 @@ class homework1
                     return;
                 }
             }
+
+            else if ((p_tree.value!= null) && (p_tree.value.equals("range")))
+            {
+                Dimension dim = new Dimension();
+                dim.SetStartIndex(Integer.parseInt(p_tree.left.left.value));
+                dim.SetEndIndex(Integer.parseInt(p_tree.right.left.value));
+                dim.SetSize(dim.endIndex-dim.startIndex+1);
+                //TODO fill ixa value
+                GlobalDimList.add(dim);
+            }
+
             else if(p_tree.right != null) {FillSymbolTable(p_symbolTable, p_tree.right);} // Check right sub-tree
         }
     }
