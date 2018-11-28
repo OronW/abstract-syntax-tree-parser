@@ -345,6 +345,25 @@ class homework1
 
     }
 
+    private static Variable GetArrayName(AST p_tree, SymbolTable p_symbolTable)
+    {
+        Variable CurrentArray = null;
+        if(p_tree.left.value.equals("record"))
+        {
+            CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.right.left.value);
+        }
+        else if(p_tree.left.value.equals("identifier"))
+        {
+            CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.left.value);
+        }
+        else if(p_tree.left.value.equals("array"))
+        {
+            CurrentArray = GetArrayName(p_tree.left, p_symbolTable);
+            CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetType());
+        }
+        return CurrentArray;
+    }
+
     //<LEEOR_ADDING HandleArrayPcode>
     private static void HandleArrayPcode(String p_arrayName, int p_dimNum, AST p_tree, SymbolTable p_symbolTable)
     {
@@ -444,7 +463,7 @@ class homework1
 
         if(p_tree.value.equals("array"))
         {
-            Variable CurrentArray = null;
+            Variable CurrentArray = GetArrayName(p_tree, p_symbolTable);
             if(p_tree.left.value.equals("record"))
             {
                 CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.right.left.value);
@@ -452,10 +471,6 @@ class homework1
             else if(p_tree.left.value.equals("identifier"))
             {
                 CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.left.value);
-            }
-            else
-            {
-
             }
             HandleArrayPcode(CurrentArray.GetName(), CurrentArray.dimensionsList.size()-1, p_tree.right, p_symbolTable);
             String ArraySubpart = Integer.toString(CurrentArray.GetSubpart());
