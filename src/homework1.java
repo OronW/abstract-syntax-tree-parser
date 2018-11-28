@@ -71,6 +71,7 @@ class homework1
         public String Type;
         public int Address;
         public int Offset; //<ORON> TODO: check if really needed for every variable
+        public int Subpart; //<LEEOR_ADDING> TODO: check if really needed for every variable
 
         public ArrayList<Dimension> dimensionsList;
         public Variable(){dimensionsList=new ArrayList<Dimension>();} // c'tor for Variable
@@ -89,6 +90,8 @@ class homework1
         }
         public void SetType(String p_newType){Type = p_newType;}
         public void SetOffset(int p_offset) {Offset = p_offset;}    //<ORON>
+        public void SetSubpart(int p_subpart){Subpart = p_subpart;}
+        public int GetSubpart(){return Subpart;}
     }
 
     static final class SymbolTable
@@ -134,8 +137,6 @@ class homework1
                 default:
                 {
 
-                   // System.out.println("TEST:  CURRENT TYPE IS: " + type);
-                    //System.out.println(m_SymbolTable.get("a").GetType());
 
                     result = (m_SymbolTable.get(type)).GetSize();
                     break;
@@ -194,12 +195,13 @@ class homework1
                     FillSymbolTable(p_symbolTable, p_tree.right.left);
 
                     new_variable.dimensionsList.addAll(GlobalDimList);
-                    int totalArraySize = 0;
+                    int TotalArraySize = 0;
                     for (int i=0; i< new_variable.dimensionsList.size(); i++ )
                     {
-                        totalArraySize += (new_variable.dimensionsList.get(i).size)*GetTypeSize(new_variable.GetType());
+                        TotalArraySize += (new_variable.dimensionsList.get(i).size)*GetTypeSize(new_variable.GetType());
                     }
-                    CurrentAvailableAddress += totalArraySize;
+                    CurrentAvailableAddress += TotalArraySize;
+                    new_variable.SetSize(TotalArraySize);
 
                     int TotalIxa = GetTypeSize(new_variable.GetType());
                     for (int i = new_variable.dimensionsList.size()-1; i>=0; i-- )
@@ -207,7 +209,13 @@ class homework1
                         new_variable.dimensionsList.get(i).SetIxa(TotalIxa);
                         TotalIxa *= new_variable.dimensionsList.get(i).size;
                     }
-                    new_variable.SetSize(totalArraySize);
+
+                    int TotalSubpart = 0;
+                    for (int i=0; i< new_variable.dimensionsList.size(); i++ )
+                    {
+                        TotalSubpart += (new_variable.dimensionsList.get(i).ixa * new_variable.dimensionsList.get(i).startIndex);
+                    }
+                    new_variable.SetSubpart(TotalSubpart);
 
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
 
@@ -226,10 +234,16 @@ class homework1
                     //CurrentAvailableAddress += new_variable.Size;//TODO: DO NOT increase the address size. record does not hold it's own address
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
 
-                    recordFlag = true;  //recordFlag is the condition to set variable offset. it means we are inside a record
+                    if(recordFlag==true)            //TODO:  check this condition in case of offset problem
+                    {
+                        new_variable.SetOffset(offsetValue);
+                        //offsetValue = offsetValue + new_variable.GetSize();
+                        offsetValue = 0;
+                    }
+                    else recordFlag = true;  //recordFlag is the condition to set variable offset. it means we are inside a record
                     FillSymbolTable(p_symbolTable,p_tree.right.left); // Re-enter the fill function. Check left sub-tree...
                     recordFlag = false; //exit "record mode" and reset the offset
-                    offsetValue = 0;
+                    offsetValue = 0;    //TODO: think about adding self offset condition
 
                     //System.out.println("TEST:  BEFORE GET SIZE " + new_variable.GetName());
                     //System.out.println("TEST:  BEFORE GET SIZE VALUE " + p_tree.right.left.value);
@@ -305,7 +319,10 @@ class homework1
         {
             case 0: // left
             {
-                if(p_tree!=null && p_tree.left != null && p_tree.left.value.contains("identifier"))
+                if(p_tree!=null && p_tree.left != null &&
+                           (p_tree.left.value.contains("identifier")
+                        || p_tree.left.value.contains("record")
+                        || p_tree.left.value.contains("array"))) //<LEEOR_ADDING> also checks if need to use ind for the left
                 {
                     System.out.println("ind");
                 }
@@ -313,7 +330,10 @@ class homework1
             }
             case 1: // right
             {
-                if(p_tree != null && p_tree.right != null && p_tree.right.value.contains("identifier"))
+                if(p_tree!=null && p_tree.right != null &&
+                        (p_tree.right.value.contains("identifier")
+                                || p_tree.right.value.contains("record")
+                                || p_tree.right.value.contains("array")))
                 {
                     System.out.println("ind");  //TODO: some ind are missing, check again after we finish HW2
                 }
@@ -325,6 +345,18 @@ class homework1
 
     }
 
+    //<LEEOR_ADDING HandleArrayPcode>
+    private static void HandleArrayPcode(String p_arrayName, int p_dimNum, AST p_tree, SymbolTable p_symbolTable)
+    {
+        if(p_tree == null) {return;}
+        HandleArrayPcode(p_arrayName,p_dimNum-1 ,p_tree.left, p_symbolTable);
+        if(p_tree.value.equals("indexList"))
+        {
+          MakePcode(p_tree.right,p_symbolTable);
+          int CurrentIxa = p_symbolTable.m_SymbolTable.get(p_arrayName).dimensionsList.get(p_dimNum).ixa;
+          System.out.println("ixa " + Integer.toString(CurrentIxa));
+        }
+    }
 
     private static void MakePcode(AST p_tree, SymbolTable p_symbolTable)
     {
@@ -408,6 +440,31 @@ class homework1
 //        }
         //endregion
 
+        //region Handle Array <LEEOR_ADDING>
+
+        if(p_tree.value.equals("array"))
+        {
+            Variable CurrentArray = null;
+            if(p_tree.left.value.equals("record"))
+            {
+                CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.right.left.value);
+            }
+            else if(p_tree.left.value.equals("identifier"))
+            {
+                CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.left.value);
+            }
+            else
+            {
+
+            }
+            HandleArrayPcode(CurrentArray.GetName(), CurrentArray.dimensionsList.size()-1, p_tree.right, p_symbolTable);
+            String ArraySubpart = Integer.toString(CurrentArray.GetSubpart());
+            System.out.println("dec " + ArraySubpart);
+            return;
+        }
+
+        //endregion Handle Array
+
         //region Generate Right SubTree
         if (p_tree.value.equals("record"))
             rightTreeSide = false;  //This variable fix the unwanted "ldc" print of right hand son
@@ -426,7 +483,6 @@ class homework1
             case "or":
             case "and":
             case "if":
-                //case "else":
             case "equals":
             case "notEquals":
             case "lessThan":
