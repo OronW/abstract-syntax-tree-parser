@@ -133,6 +133,10 @@ class homework1
 
                 default:
                 {
+
+                   // System.out.println("TEST:  CURRENT TYPE IS: " + type);
+                    //System.out.println(m_SymbolTable.get("a").GetType());
+
                     result = (m_SymbolTable.get(type)).GetSize();
                     break;
                 }
@@ -146,9 +150,10 @@ class homework1
                 return 0;
             int sum = GetRecordSize(p_tree.left);
             if ((p_tree.right != null) && (p_tree.right.value.equals("var")))
-            {
-                sum += GetTypeSize(p_tree.right.left.left.value);
-            }
+                {
+
+                    sum += GetTypeSize(p_tree.right.left.left.value);
+                }
             return sum;
         }
 
@@ -178,12 +183,13 @@ class homework1
                     Variable new_variable = new Variable();
                     new_variable.SetName(p_tree.left.left.value);
                     new_variable.SetAddress(CurrentAvailableAddress);
-                    if((p_tree.right.right!= null) && (p_tree.right.right.equals("identifier")))
+                    if((p_tree.right.right!= null) && (p_tree.right.right.value.equals("identifier")))
                     {
                         new_variable.SetType(p_tree.right.right.left.value);
                     }
-                    else
-                        {new_variable.SetType(p_tree.right.right.value);}
+                    else {
+                        new_variable.SetType(p_tree.right.right.value);
+                    }
 
                     FillSymbolTable(p_symbolTable, p_tree.right.left);
 
@@ -194,6 +200,13 @@ class homework1
                         totalArraySize += (new_variable.dimensionsList.get(i).size)*GetTypeSize(new_variable.GetType());
                     }
                     CurrentAvailableAddress += totalArraySize;
+
+                    int TotalIxa = GetTypeSize(new_variable.GetType());
+                    for (int i = new_variable.dimensionsList.size()-1; i>=0; i-- )
+                    {
+                        new_variable.dimensionsList.get(i).SetIxa(TotalIxa);
+                        TotalIxa *= new_variable.dimensionsList.get(i).size;
+                    }
                     new_variable.SetSize(totalArraySize);
 
 
@@ -217,6 +230,8 @@ class homework1
                     recordFlag = false; //exit "record mode" and reset the offset
                     offsetValue = 0;
 
+                    //System.out.println("TEST:  BEFORE GET SIZE " + new_variable.GetName());
+                    //System.out.println("TEST:  BEFORE GET SIZE VALUE " + p_tree.right.left.value);
                     new_variable.SetSize(GetRecordSize(p_tree.right.left));
 
                 }
