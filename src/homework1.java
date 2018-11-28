@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Scanner;
 
@@ -13,6 +14,12 @@ class homework1
 
     public static int CurrentAvailableAddress;
     public static final int TABLE_START_ADDRESS = 5;
+    public static int CurrentArrayDimention=1;
+
+    //public static int CountDim =0;
+    public static ArrayList<Dimension> GlobalDimList;
+
+
 
     // Classes
 
@@ -40,6 +47,22 @@ class homework1
         }
     }
 
+    static final class Dimension{
+        //Properties
+        public int startIndex;
+        public int endIndex;
+        public int size;
+        public int ixa;
+
+        //Methods
+        public void SetStartIndex(int p_newStartIndex){startIndex = p_newStartIndex;}
+        public void SetEndIndex(int p_newEndIndex){endIndex = p_newEndIndex;}
+        public void SetSize(int p_size){size = p_size;}
+        public void SetIxa(int p_ixa){ixa = p_ixa;}
+
+
+    }
+
     static final class Variable
     {
         // Properties
@@ -49,6 +72,8 @@ class homework1
         public int Address;
         public int Offset; //<ORON> TODO: check if really needed for every variable
 
+        public ArrayList<Dimension> dimensionsList;
+        public Variable(){dimensionsList=new ArrayList<Dimension>();} // c'tor for Variable
 
 
         // Methods
@@ -69,7 +94,7 @@ class homework1
     static final class SymbolTable
     {
         // Properties
-        public Hashtable<String, Variable> m_SymbolTable;         /**<LEEOR> TODO: change to Map or Dictionary  <ORON> Why should we change?</>**/
+        public static Hashtable<String, Variable> m_SymbolTable;         /**<LEEOR> TODO: change to Map or Dictionary  <ORON> Why should we change?</>**/
         //public static int CurrentAvailableAddress;            //TODO: this has moved to be a global variable
         //public static final int TABLE_START_ADDRESS = 5;
 
@@ -89,14 +114,53 @@ class homework1
             return table;
         }
 
+        private static int GetTypeSize(String type)
+        {
+            int result = 1;
+            switch(type)
+            {
+                case "int":
+                case "real":
+                case "bool":
+                case "constInt":
+                case "constReal":
+                case "constBool":
+                case "pointer":
+                {
+                    result = 1;
+                    break;
+                }
+
+                default:
+                {
+                    result = (m_SymbolTable.get(type)).GetSize();
+                    break;
+                }
+            }
+            return result;
+        }
+
+        public static int GetRecordSize(AST p_tree)
+        {
+            if (p_tree == null)
+                return 0;
+            int sum = GetRecordSize(p_tree.left);
+            if ((p_tree.right != null) && (p_tree.right.value.equals("var")))
+            {
+                sum += GetTypeSize(p_tree.right.left.left.value);
+            }
+            return sum;
+        }
+
         /**
          * FillSymbolTable is a recursive method;
          * The method delivers variables from the AST into the Symbol Table;
-         * @param p_tree: an AST;
+         * p_tree: an AST;
          *            Expected to start from Scope branch of the tree;
          *
-         * @param p_symbolTable: an SymbolTable;
+         * p_symbolTable: an SymbolTable;
          */
+
         private static void FillSymbolTable(SymbolTable p_symbolTable, AST p_tree)
         {
             if(p_tree == null) {return;}
@@ -107,20 +171,44 @@ class homework1
             {
 
                 /**<ORON> TODO: fill code for array:*/
-                /* if ((p_tree.right.value!= null) && (p_tree.right.value.equals("array"))) // TODO: currently empty - fill
+
+                if ((p_tree.right.value!= null) && (p_tree.right.value.equals("array")))
                 {
-                    p_symbolTable.CurrentAvailableAddress+=1;
+                    GlobalDimList = new ArrayList<Dimension>();
+                    Variable new_variable = new Variable();
+                    new_variable.SetName(p_tree.left.left.value);
+                    new_variable.SetAddress(CurrentAvailableAddress);
+                    new_variable.SetType(p_tree.right.right.left.value);
+                    FillSymbolTable(p_symbolTable, p_tree.right.left);
+
+                    new_variable.dimensionsList.addAll((ArrayList<Dimension>)GlobalDimList);
+                    int totalArraySize = 0;
+                    for (int i=0; i< new_variable.dimensionsList.size(); i++ )
+                    {
+                        totalArraySize += (new_variable.dimensionsList.get(i).size)*GetTypeSize(new_variable.GetType());
+                    }
+                    CurrentAvailableAddress += totalArraySize;
+                    new_variable.SetSize(totalArraySize);
+
+                    new_variable.SetType(p_tree.right.right.left.value);
+                    //new_variable.SetAddress(CurrentAvailableAddress);
+
+                    //TODO: MAGIC
+
+                    new_variable.SetSize(1); //TODO add gestSize function
+
                     return;
-                }*/
+                }
 
                /**<ORON> TODO: new code here - if record, do... else act normal:*/
-                if ((p_tree.right.value!= null) && (p_tree.right.value.equals("record")))
+
+               else if ((p_tree.right.value!= null) && (p_tree.right.value.equals("record")))
                 {
                     //create the variable for record FIRST, so it will get an address
                     Variable new_variable = new Variable();
                     new_variable.SetType(p_tree.right.value);
                     new_variable.SetAddress(CurrentAvailableAddress);
-                    new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
+                    //new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
                     new_variable.SetName(p_tree.left.left.value);
                     //CurrentAvailableAddress += new_variable.Size;//TODO: DO NOT increase the address size. record does not hold it's own address
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
@@ -129,6 +217,9 @@ class homework1
                     FillSymbolTable(p_symbolTable,p_tree.right.left); // Re-enter the fill function. Check left sub-tree...
                     recordFlag = false; //exit "record mode" and reset the offset
                     offsetValue = 0;
+
+                    new_variable.SetSize(GetRecordSize(p_tree.right.left));
+
                 }
 
                 else
@@ -136,7 +227,7 @@ class homework1
                     Variable new_variable = new Variable();
                     new_variable.SetType(p_tree.right.value);
                     new_variable.SetAddress(CurrentAvailableAddress);
-                    new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
+                    new_variable.SetSize(GetTypeSize(p_tree.right.value)); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
                     new_variable.SetName(p_tree.left.left.value);
 
                     if(recordFlag==true) {          //<ORON> deal with offset
@@ -154,10 +245,14 @@ class homework1
     }
 
     // Methods
+
+
     private static void generatePCode(AST ast, SymbolTable symbolTable)
     {
         // TODO: go over AST and print code
 
+        //region tests assigned addresses
+        /*
         //TODO: this code will be deleted. use it to check variable address. see it in console.
         System.out.println("\n*******************************************");    //TODO: REMOVE THIS. used to check if assigned address is correct
         System.out.println("********      ADDRESS TESTING     *********\n");    //TODO: REMOVE THIS. used to check if assigned address is correct
@@ -168,7 +263,8 @@ class homework1
         System.out.println("Address of b:" + symbolTable.m_SymbolTable.get("b").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
         System.out.println("\n*********  END OF ADDRESS TESTING  ********");    //TODO: REMOVE THIS. used to check if assigned address is correct
         System.out.println("*******************************************\n");    //TODO: REMOVE THIS. used to check if assigned address is correct
-
+        */
+        //endregion
 
         if(ast.right.value.equals("content") && ast.right.right != null)
         {
@@ -307,7 +403,7 @@ class homework1
             case "greaterOrEquals":
             case "print":
             {
-                CheckIfInd(p_tree,1); // checks if left sub-tree has identifier
+                CheckIfInd(p_tree,1); // checks if right sub-tree has identifier
                 break;
             }
 
@@ -332,6 +428,14 @@ class homework1
             case "var":
             {
                 break;
+            }
+
+            case "range":
+            {
+                Dimension new_dimension = new Dimension();
+                new_dimension.SetStartIndex(Integer.parseInt(p_tree.left.left.value));   // Integer.parseInt converts string to int
+                new_dimension.SetEndIndex(Integer.parseInt(p_tree.right.left.value));
+
             }
 
             //TODO: new code added here for pointer and record
@@ -398,7 +502,8 @@ class homework1
                 System.out.println("geq");
                 break;
             case "assignment":
-                CheckIfInd(p_tree.right, 1);   //<ORON>
+                if (p_tree.right.value.equals("record")) //<ORON>
+                    CheckIfInd(p_tree.right, 1);   //<ORON>
                 System.out.println("sto");
                 break;
             case "print":
