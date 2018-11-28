@@ -209,6 +209,7 @@ class homework1
                     }
                     new_variable.SetSize(totalArraySize);
 
+                    p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
 
                 }
 
@@ -234,6 +235,7 @@ class homework1
                     //System.out.println("TEST:  BEFORE GET SIZE VALUE " + p_tree.right.left.value);
                     new_variable.SetSize(GetRecordSize(p_tree.right.left));
 
+                    p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
                 }
 
                 else
@@ -399,6 +401,11 @@ class homework1
             System.out.println("L" + label_2 + ":");
             return;
         }
+
+//        if (currentValue.equals("array")) {
+//            int address = SymbolTable.m_SymbolTable.get(p_tree.left.left.value).Address;
+//            System.out.println("ldc " + address);
+//        }
         //endregion
 
         //region Generate Right SubTree
@@ -478,10 +485,13 @@ class homework1
 
             case "identifier":
             {
+
                 if((rightTreeSide) && (p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //This if statement fix the unwanted "ldc" print for right hand son
                     System.out.println("ldc " + p_symbolTable.m_SymbolTable.get(p_tree.left.value).Address);
+
                 break;
             }
+
             // ops:
             case "plus":
                 System.out.println("add");
