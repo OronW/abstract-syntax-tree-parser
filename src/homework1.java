@@ -392,7 +392,7 @@ class homework1
         {
           MakePcode(p_tree.right,p_symbolTable);
 
-          if(p_tree.right.value.equals("record")) //TODO check if condition always correct
+          if((p_tree.right.value.equals("record"))||(p_tree.right.value.equals("identifier")))  //TODO check if condition always correct
             System.out.println("ind"); //
 
 
@@ -604,6 +604,7 @@ class homework1
         //endregion
 
         //region Handle All post-order statements
+
         switch(currentValue)
         {
             //unused:
@@ -621,6 +622,7 @@ class homework1
             {
                 break;
             }
+
 
             case "range":
             {
