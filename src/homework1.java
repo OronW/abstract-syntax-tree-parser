@@ -12,6 +12,8 @@ class homework1
     public static int offsetValue = 0;
     public static boolean rightTreeSide = true;
 
+    public static int m_SwitchNumber = -1; // <LEEOR_ADDING> starts from -1 since every switch we start with ++ and ending it with -- operators
+
     public static int CurrentAvailableAddress;
     public static final int TABLE_START_ADDRESS = 5;
     public static int CurrentArrayDimention=1;
@@ -199,11 +201,12 @@ class homework1
                     FillSymbolTable(p_symbolTable, p_tree.right.left);
 
                     new_variable.dimensionsList.addAll(GlobalDimList);
-                    int TotalArraySize = 0;
+                    int TotalArraySize = 1;     //TODO <ORON> CHANGED FROM 0 TO 1 BECAUSE NOW WE USE MULTIPLICATION
                     for (int i=0; i< new_variable.dimensionsList.size(); i++ )
                     {
-                        TotalArraySize += (new_variable.dimensionsList.get(i).size)*GetTypeSize(new_variable.GetType());
+                        TotalArraySize *= (new_variable.dimensionsList.get(i).size)*GetTypeSize(new_variable.GetType());    //TODO<ORON> THIS WAS +=
                     }
+
                     CurrentAvailableAddress += TotalArraySize;
                     new_variable.SetSize(TotalArraySize);
 
@@ -402,6 +405,38 @@ class homework1
         }
     }
 
+    //region PrintReverseCases to handle CaseList <LEEOR-ADDING>
+
+    /**
+     * This recursive method is made to print all cases in reverse order, for the last part of an switch condition.
+     *
+     * PrintReverseCades gets as parameter an AST node (p_tree), acpected to contain "caseList" value;
+     * The method prints in correct ordedr (right to left) all the cases under the given AST.
+     * **/
+    private static void PrintReverseCases(AST p_tree) //<LEEOR_ADDING>
+    {
+        if(p_tree == null || !p_tree.value.equals("caseList"))
+        {return;}
+
+        // Print right Sub-Tree
+        AST CasePointer = p_tree.right;
+        if(CasePointer != null && CasePointer.value.equals("case"))
+        {
+            if(CasePointer.left != null && CasePointer.left.left != null)
+                System.out.println("ujp case_"+m_SwitchNumber+"_"+CasePointer.left.left.value);
+        }
+
+        // Print left Sub-Tree
+        CasePointer = p_tree.left;
+        if(CasePointer!=null && CasePointer.value.equals("caseList"))
+        {
+            PrintReverseCases(CasePointer);
+        }
+    }
+    //endregion
+
+
+
     private static void MakePcode(AST p_tree, SymbolTable p_symbolTable)
     {
         if(p_tree == null) {return;}
@@ -450,6 +485,11 @@ class homework1
                 CheckIfInd(p_tree,0); // checks if left sub-tree has identifier
                 break;
             }
+            case "case":  // <LEEOR_ADDING>
+                if(p_tree.left != null && p_tree.left.left != null)
+                {
+                    System.out.println("case_" + m_SwitchNumber + "_" +p_tree.left.left.value+":");
+                }
 
             default: break;
         }
@@ -482,6 +522,21 @@ class homework1
 //            int address = SymbolTable.m_SymbolTable.get(p_tree.left.left.value).Address;
 //            System.out.println("ldc " + address);
 //        }
+        //endregion
+
+        //region Handle Switch statement - first part (inorder) <LEEOR_ADDING>
+
+        int currentSwitchNumber = m_SwitchNumber; //<LEEOR> : WRONG_OPTION_A
+        if(currentValue.contains("switch"))
+        {
+            CheckIfInd(p_tree, 0);/***<LEEOR> TODO: MAKE SURE TO PUT HERE CHECK IF IND (LEFT)***/
+            m_SwitchNumber++;
+
+            System.out.println("neg");
+            System.out.println("ixj switch_end_"+ Integer.toString(currentSwitchNumber));
+            m_SwitchNumber++;//<LEEOR> : WRONG_OPTION_A
+        }
+
         //endregion
 
         //region Handle Array <LEEOR_ADDING>
@@ -596,6 +651,37 @@ class homework1
                 break;
             }
 
+        /*    case "indexList":   //TODO NEW CODE ADDED - DOES NOTHING?
+            {
+                if(p_tree.right.value.equals("identifier"))
+                    System.out.println("ind");
+            }*/
+
+            //region All cases of Switch - second part (post-order) <LEEOR_ADDING>
+            case "switch":
+                PrintReverseCases(p_tree.right); // prints ucj for all cases in the condition, reverse order
+                System.out.println("switch_end_" + m_SwitchNumber + ":");
+                m_SwitchNumber--;
+                break;
+
+            case "caseList":
+                break;
+
+            case "case":
+                if(p_tree.left != null)
+                {
+                    System.out.println("ujp switch_end_"+m_SwitchNumber);
+                }
+                break;
+
+            //endregion
+
+            case "break": //<LEEOR_ADDING> TODO: need to check if that is enough, maybe need to be more complex
+            {
+                System.out.println("ujp L " + (m_LableNumber-1));
+                break;
+            }
+
             // ops:
             case "plus":
                 System.out.println("add");
@@ -640,11 +726,14 @@ class homework1
             case "greaterOrEquals":
                 System.out.println("geq");
                 break;
-            case "assignment":
+            case "assignment": {
+
                 if (p_tree.right.value.equals("record")) //<ORON>
                     CheckIfInd(p_tree.right, 1);   //<ORON>
+
                 System.out.println("sto");
                 break;
+            }
             case "print":
             {
                 System.out.println("print");
