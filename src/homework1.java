@@ -12,7 +12,7 @@ class homework1
     public static int offsetValue = 0;
     public static boolean rightTreeSide = true;
 
-    public static int m_SwitchNumber = -1; // <LEEOR_ADDING> starts from -1 since every switch we start with ++ and ending it with -- operators
+    public static int m_SwitchNumber = 0; // <LEEOR_ADDING> starts from -1 since every switch we start with ++ and ending it with -- operators
 
     public static int CurrentAvailableAddress;
     public static final int TABLE_START_ADDRESS = 5;
@@ -461,7 +461,8 @@ class homework1
         //endregion
 
         //region Generate Left SubTree
-        MakePcode(p_tree.left, p_symbolTable);
+        if(!p_tree.value.equals("case"))        //TODO <ORON> ADDED CONDITION. left tree added unwanted ldc
+            MakePcode(p_tree.left, p_symbolTable);
         switch (currentValue)
         {
             case "plus":
@@ -526,7 +527,7 @@ class homework1
 
         //region Handle Switch statement - first part (inorder) <LEEOR_ADDING>
 
-        int currentSwitchNumber = m_SwitchNumber; //<LEEOR> : WRONG_OPTION_A
+        int currentSwitchNumber = m_LableNumber; //TODO: <ORON> CHANGED FROM switchnumber to labelnumber <LEEOR> : WRONG_OPTION_A
         if(currentValue.contains("switch"))
         {
             CheckIfInd(p_tree, 0);/***<LEEOR> TODO: MAKE SURE TO PUT HERE CHECK IF IND (LEFT)***/
@@ -651,11 +652,6 @@ class homework1
                 break;
             }
 
-        /*    case "indexList":   //TODO NEW CODE ADDED - DOES NOTHING?
-            {
-                if(p_tree.right.value.equals("identifier"))
-                    System.out.println("ind");
-            }*/
 
             //region All cases of Switch - second part (post-order) <LEEOR_ADDING>
             case "switch":
