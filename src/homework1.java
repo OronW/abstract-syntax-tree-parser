@@ -375,7 +375,10 @@ class homework1
         else if((p_tree.left.value.equals("array")))
         {
             CurrentArray = GetArrayName(p_tree.left, p_symbolTable);
-            CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetType());
+
+            {
+                CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetType());
+            }
         }
 
         return CurrentArray;
@@ -558,7 +561,10 @@ class homework1
 
             if(CurrentArray.GetType().equals("pointer") )    //TODO <ORON> ADDED CODE
             {
-                CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetPointerOf());
+                while (CurrentArray.GetType().equals("pointer")) {
+                    CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetPointerOf());
+                }
+                //CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetPointerOf());
             }
 
             HandleArrayPcode(CurrentArray.GetName(), CurrentArray.dimensionsList.size()-1, p_tree.right, p_symbolTable);
