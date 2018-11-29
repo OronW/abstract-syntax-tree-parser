@@ -76,6 +76,7 @@ class homework1
         public ArrayList<Dimension> dimensionsList;
         public Variable(){dimensionsList=new ArrayList<Dimension>();} // c'tor for Variable
 
+        public String PointerOf;
 
         // Methods
         public int GetSize() { return this.Size;}
@@ -92,6 +93,9 @@ class homework1
         public void SetOffset(int p_offset) {Offset = p_offset;}    //<ORON>
         public void SetSubpart(int p_subpart){Subpart = p_subpart;}
         public int GetSubpart(){return Subpart;}
+
+        public String GetPointerOf(){return PointerOf;}
+        public void SetPointerOf(String pointerTo){PointerOf = pointerTo;}
     }
 
     static final class SymbolTable
@@ -265,6 +269,9 @@ class homework1
                         offsetValue = offsetValue + new_variable.GetSize();
                     }
 
+                    if(p_tree.right.value.equals("pointer"))    //TODO <ORON> NEW ADDED CODE
+                        new_variable.SetPointerOf(p_tree.right.left.left.value);
+
                     CurrentAvailableAddress += new_variable.Size;
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
                     return;
@@ -348,7 +355,13 @@ class homework1
     private static Variable GetArrayName(AST p_tree, SymbolTable p_symbolTable)
     {
         Variable CurrentArray = null;
-        if(p_tree.left.value.equals("record"))
+
+        if(p_tree.left.value.equals("pointer")) //TODO: <ORON> ADDED THIS NEW CONDITION
+        {
+            CurrentArray = GetArrayName(p_tree.left, p_symbolTable);
+        }
+
+        else if(p_tree.left.value.equals("record"))
         {
             CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.right.left.value);
         }
@@ -356,11 +369,12 @@ class homework1
         {
             CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.left.value);
         }
-        else if(p_tree.left.value.equals("array"))
+        else if((p_tree.left.value.equals("array")))
         {
             CurrentArray = GetArrayName(p_tree.left, p_symbolTable);
             CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetType());
         }
+
         return CurrentArray;
     }
 
@@ -368,12 +382,23 @@ class homework1
     private static void HandleArrayPcode(String p_arrayName, int p_dimNum, AST p_tree, SymbolTable p_symbolTable)
     {
         if(p_tree == null) {return;}
+
         HandleArrayPcode(p_arrayName,p_dimNum-1 ,p_tree.left, p_symbolTable);
+
         if(p_tree.value.equals("indexList"))
         {
           MakePcode(p_tree.right,p_symbolTable);
-          int CurrentIxa = p_symbolTable.m_SymbolTable.get(p_arrayName).dimensionsList.get(p_dimNum).ixa;
-          System.out.println("ixa " + Integer.toString(CurrentIxa));
+
+          if(p_tree.right.value.equals("record")) //TODO check if condition always correct
+            System.out.println("ind"); //
+
+
+          //if((p_dimNum) >= 0) //TODO <ORON> ADDED CONDITION
+            {
+
+              int CurrentIxa = p_symbolTable.m_SymbolTable.get(p_arrayName).dimensionsList.get(p_dimNum).ixa;
+              System.out.println("ixa " + Integer.toString(CurrentIxa));
+            }
         }
     }
 
@@ -464,6 +489,8 @@ class homework1
         if(p_tree.value.equals("array"))
         {
             Variable CurrentArray = GetArrayName(p_tree, p_symbolTable);
+
+
             if(p_tree.left.value.equals("record"))
             {
                 CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.right.left.value);
@@ -472,6 +499,10 @@ class homework1
             {
                 CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.left.value);
             }
+
+            if(CurrentArray.GetType().equals("pointer"))    //TODO <ORON> ADDED CODE
+                CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetPointerOf());
+
             HandleArrayPcode(CurrentArray.GetName(), CurrentArray.dimensionsList.size()-1, p_tree.right, p_symbolTable);
             String ArraySubpart = Integer.toString(CurrentArray.GetSubpart());
             System.out.println("dec " + ArraySubpart);
