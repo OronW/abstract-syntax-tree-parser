@@ -269,7 +269,7 @@ class homework1
                         offsetValue = offsetValue + new_variable.GetSize();
                     }
 
-                    if(p_tree.right.value.equals("pointer"))    //TODO <ORON> NEW ADDED CODE
+                    if((p_tree.right.value.equals("pointer")) && (p_tree.right.left.value.equals("identifier")))    //TODO <ORON> NEW ADDED CODE
                         new_variable.SetPointerOf(p_tree.right.left.left.value);
 
                     CurrentAvailableAddress += new_variable.Size;
@@ -500,8 +500,10 @@ class homework1
                 CurrentArray = p_symbolTable.m_SymbolTable.get(p_tree.left.left.value);
             }
 
-            if(CurrentArray.GetType().equals("pointer"))    //TODO <ORON> ADDED CODE
+            if(CurrentArray.GetType().equals("pointer") )    //TODO <ORON> ADDED CODE
+            {
                 CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetPointerOf());
+            }
 
             HandleArrayPcode(CurrentArray.GetName(), CurrentArray.dimensionsList.size()-1, p_tree.right, p_symbolTable);
             String ArraySubpart = Integer.toString(CurrentArray.GetSubpart());
