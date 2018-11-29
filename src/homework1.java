@@ -12,7 +12,7 @@ class homework1
     public static int offsetValue = 0;
     public static boolean rightTreeSide = true;
 
-    public static int m_SwitchNumber = 0; // <LEEOR_ADDING> starts from -1 since every switch we start with ++ and ending it with -- operators
+    public static int m_SwitchNumber = -1; // <LEEOR_ADDING> starts from -1 since every switch we start with ++ and ending it with -- operators
 
     public static int CurrentAvailableAddress;
     public static final int TABLE_START_ADDRESS = 5;
@@ -423,7 +423,7 @@ class homework1
         if(CasePointer != null && CasePointer.value.equals("case"))
         {
             if(CasePointer.left != null && CasePointer.left.left != null)
-                System.out.println("ujp case_"+m_SwitchNumber+"_"+CasePointer.left.left.value);
+                System.out.println("ujp case_"+m_LableNumber+"_"+CasePointer.left.left.value);
         }
 
         // Print left Sub-Tree
@@ -489,7 +489,7 @@ class homework1
             case "case":  // <LEEOR_ADDING>
                 if(p_tree.left != null && p_tree.left.left != null)
                 {
-                    System.out.println("case_" + m_SwitchNumber + "_" +p_tree.left.left.value+":");
+                    System.out.println("case_" + m_LableNumber + "_" +p_tree.left.left.value+":");
                 }
 
             default: break;
@@ -656,7 +656,7 @@ class homework1
             //region All cases of Switch - second part (post-order) <LEEOR_ADDING>
             case "switch":
                 PrintReverseCases(p_tree.right); // prints ucj for all cases in the condition, reverse order
-                System.out.println("switch_end_" + m_SwitchNumber + ":");
+                System.out.println("switch_end_" + m_LableNumber++ + ":");
                 m_SwitchNumber--;
                 break;
 
@@ -666,7 +666,7 @@ class homework1
             case "case":
                 if(p_tree.left != null)
                 {
-                    System.out.println("ujp switch_end_"+m_SwitchNumber);
+                    System.out.println("ujp switch_end_"+m_LableNumber);
                 }
                 break;
 
