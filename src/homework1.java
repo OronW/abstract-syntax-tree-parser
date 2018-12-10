@@ -7,21 +7,17 @@ import java.util.Scanner;
 class homework1
 {
     // Properties
-    private static int m_LableNumber = 0; // Labels counter for the Pcode
+    private static int m_LableNumber = 0; // Labels counter for the PCode
     public static boolean recordFlag = false;   // flag to indicate we are inside a record and update offset value
     public static int offsetValue = 0;
     public static boolean rightTreeSide = true;
-
-    public static int m_SwitchNumber = -1; // <LEEOR_ADDING> starts from -1 since every switch we start with ++ and ending it with -- operators
-
+    public static int m_SwitchNumber = -1; // starts from -1 since every switch we start with ++ and ending it with -- operators
     public static int CurrentAvailableAddress;
     public static final int TABLE_START_ADDRESS = 5;
     public static int CurrentArrayDimention=1;
 
     //public static int CountDim =0;
     public static ArrayList<Dimension> GlobalDimList;
-
-
 
     // Classes
 
@@ -61,8 +57,6 @@ class homework1
         public void SetEndIndex(int p_newEndIndex){endIndex = p_newEndIndex;}
         public void SetSize(int p_size){size = p_size;}
         public void SetIxa(int p_ixa){ixa = p_ixa;}
-
-
     }
 
     static final class Variable
@@ -74,11 +68,12 @@ class homework1
         public int Address;
         public int Offset; //<ORON> TODO: check if really needed for every variable
         public int Subpart; //<LEEOR_ADDING> TODO: check if really needed for every variable
-
+        public String PointerOf;
         public ArrayList<Dimension> dimensionsList;
+
+        // C'tor
         public Variable(){dimensionsList=new ArrayList<Dimension>();} // c'tor for Variable
 
-        public String PointerOf;
 
         // Methods
         public int GetSize() { return this.Size;}
@@ -103,9 +98,7 @@ class homework1
     static final class SymbolTable
     {
         // Properties
-        public static Hashtable<String, Variable> m_SymbolTable;         /**<LEEOR> TODO: change to Map or Dictionary  <ORON> Why should we change?</>**/
-        //public static int CurrentAvailableAddress;            //TODO: this has moved to be a global variable
-        //public static final int TABLE_START_ADDRESS = 5;
+        public static Hashtable<String, Variable> m_SymbolTable;
 
         // C'tor
         public SymbolTable()
@@ -123,9 +116,17 @@ class homework1
             return table;
         }
 
+        /**
+         * GetTypeSize method is used to define the total memory-size of a variable;
+         * The method gets an name of a variable/a name of a value-type (String),
+         * and return it's size.
+         * if the given parameter is a known variable, the method ask the Symbol Table the size of the variable.
+         *
+         * p_symbolTable: an SymbolTable;
+         */
         private static int GetTypeSize(String type)
         {
-            int result = 1;
+            int result;
             switch(type)
             {
                 case "int":
@@ -142,26 +143,78 @@ class homework1
 
                 default:
                 {
-
-
-                    result = (m_SymbolTable.get(type)).GetSize();
+                    if(m_SymbolTable.containsKey(type))
+                    {result = (m_SymbolTable.get(type)).GetSize();}
+                    else
+                    {
+                        result = 1;
+                    }
                     break;
                 }
             }
             return result;
         }
 
+        /**
+         * GetRecordSize method is used to define the total  memory-size of a record;
+         * The method gets an AST holds an node of a record,
+         * then runs over all it's direct variables and return their total size.
+         *
+         * p_tree: an AST;
+         * p_symbolTable: an SymbolTable;
+         */
         public static int GetRecordSize(AST p_tree)
         {
             if (p_tree == null)
                 return 0;
             int sum = GetRecordSize(p_tree.left);
             if ((p_tree.right != null) && (p_tree.right.value.equals("var")))
+            {
+
+                sum += GetTypeSize(p_tree.right.left.left.value);
+            }
+            return sum;
+        }
+
+        /**
+         * SetAllOffestsInRecord is a recursive method;
+         * The method gets an sub-tree of an record, and define the offset value for any direct member of this record;
+         * p_tree: an AST;
+         *            Expected to start from 'DeclerationList' node under a 'record' node;
+         *
+         * p_symbolTable: an SymbolTable;
+         */
+        public static void SetAllOffestsInRecord(SymbolTable p_symbolTable, AST p_tree)
+        {
+            if(p_tree==null) return;
+            if(p_tree.left!=null) // not the first variable in the record
+            {
+                SetAllOffestsInRecord(p_symbolTable,p_tree.left); // go to the next variable
+            }
+            else if(p_tree.left==null) // the last variable in the record
+            {
+                if(p_tree.right!=null && p_tree.right.value.equals("var"))
                 {
 
-                    sum += GetTypeSize(p_tree.right.left.left.value);
+                    if(p_tree.right.left!=null && p_tree.right.left.right!=null)
+                    {
+                        p_symbolTable.m_SymbolTable.get(p_tree.right.left.left.value).SetOffset(offsetValue); // offsetValue should be zero
+                    }
                 }
-            return sum;
+                return;
+            }
+            if(p_tree.right!=null && p_tree.right.value.equals("var")) // not the first
+            {
+
+                if(p_tree.left.right!=null && p_tree.left.right.value.equals("var"))
+                {
+                    int prevSize = p_symbolTable.m_SymbolTable.get(p_tree.left.right.left.left.value).GetSize();
+                    offsetValue += prevSize;
+                    p_symbolTable.m_SymbolTable.get(p_tree.right.left.left.value).SetOffset(offsetValue);
+
+                }
+            }
+            return;
         }
 
         /**
@@ -172,12 +225,13 @@ class homework1
          *
          * p_symbolTable: an SymbolTable;
          */
-
         private static void FillSymbolTable(SymbolTable p_symbolTable, AST p_tree)
         {
             if(p_tree == null) {return;}
 
-            if(p_tree.left != null) {FillSymbolTable(p_symbolTable,p_tree.left);} // Check left sub-tree
+            if(p_tree.left != null){
+                FillSymbolTable(p_symbolTable,p_tree.left); // Check left sub-tree
+            }
 
             if(p_tree.value.equals("var"))
             {
@@ -204,8 +258,9 @@ class homework1
                     int TotalArraySize = 1;     //TODO <ORON> CHANGED FROM 0 TO 1 BECAUSE NOW WE USE MULTIPLICATION
                     for (int i=0; i< new_variable.dimensionsList.size(); i++ )
                     {
-                        TotalArraySize *= (new_variable.dimensionsList.get(i).size)*GetTypeSize(new_variable.GetType());    //TODO<ORON> THIS WAS +=
+                        TotalArraySize *= (new_variable.dimensionsList.get(i).size);    //TODO<ORON> THIS WAS +=
                     }
+                    TotalArraySize *= GetTypeSize(new_variable.GetType());
 
                     CurrentAvailableAddress += TotalArraySize;
                     new_variable.SetSize(TotalArraySize);
@@ -228,49 +283,39 @@ class homework1
 
                 }
 
-               /**<ORON> TODO: new code here - if record, do... else act normal:*/
+                /**<ORON> TODO: new code here - if record, do... else act normal:*/
 
-               else if ((p_tree.right.value!= null) && (p_tree.right.value.equals("record")))
+                else if ((p_tree.right.value!= null) && (p_tree.right.value.equals("record")))
                 {
-                    //create the variable for record FIRST, so it will get an address
+                    //create the variable for record FIRST, so it will get an address.
                     Variable new_variable = new Variable();
                     new_variable.SetType(p_tree.right.value);
                     new_variable.SetAddress(CurrentAvailableAddress);
-                    //new_variable.SetSize(1); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
                     new_variable.SetName(p_tree.left.left.value);
-                    //CurrentAvailableAddress += new_variable.Size;//TODO: DO NOT increase the address size. record does not hold it's own address
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
 
-                    if(recordFlag==true)            //TODO:  check this condition in case of offset problem
-                    {
-                        new_variable.SetOffset(offsetValue);
-                        //offsetValue = offsetValue + new_variable.GetSize();
-                        offsetValue = 0;
-                    }
-                    else recordFlag = true;  //recordFlag is the condition to set variable offset. it means we are inside a record
-                    FillSymbolTable(p_symbolTable,p_tree.right.left); // Re-enter the fill function. Check left sub-tree...
-                    recordFlag = false; //exit "record mode" and reset the offset
-                    offsetValue = 0;    //TODO: think about adding self offset condition
+                    FillSymbolTable(p_symbolTable,p_tree.right.left); // Re-enter the fill function. Check left sub-tree.
 
-                    //System.out.println("TEST:  BEFORE GET SIZE " + new_variable.GetName());
-                    //System.out.println("TEST:  BEFORE GET SIZE VALUE " + p_tree.right.left.value);
-                    new_variable.SetSize(GetRecordSize(p_tree.right.left));
+                    //<LEEOR_ADDING_TODAY_FINAL> this function suppose to set the offset value of any variable inside the current record.
+
+                    offsetValue = 0; // Reset global offsetValue for the function
+                    SetAllOffestsInRecord(p_symbolTable,p_tree.right.left);
+                    offsetValue = 0; //Reset global offsetValue after the function
+
+                    ///<LEEOR_ADDING_TODAY_FINAL> end of my addition
+
+                    new_variable.SetSize(GetRecordSize(p_tree.right.left)); // Sets the record size.
 
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
                 }
 
-                else
+                else // any other type of variable
                 {
                     Variable new_variable = new Variable();
                     new_variable.SetType(p_tree.right.value);
                     new_variable.SetAddress(CurrentAvailableAddress);
                     new_variable.SetSize(GetTypeSize(p_tree.right.value)); /** <LEEOR> TODO: CHANGE LATER (AVOID MAGIC NUMBER) **/
                     new_variable.SetName(p_tree.left.left.value);
-
-                    if(recordFlag==true) {          //<ORON> deal with offset
-                        new_variable.SetOffset(offsetValue);
-                        offsetValue = offsetValue + new_variable.GetSize();
-                    }
 
                     if((p_tree.right.value.equals("pointer")) && (p_tree.right.left.value.equals("identifier")))    //TODO <ORON> NEW ADDED CODE
                         new_variable.SetPointerOf(p_tree.right.left.left.value);
@@ -293,36 +338,52 @@ class homework1
 
             else if(p_tree.right != null) {FillSymbolTable(p_symbolTable, p_tree.right);} // Check right sub-tree
         }
+
     }
 
     // Methods
 
-
     private static void generatePCode(AST ast, SymbolTable symbolTable)
     {
         // TODO: go over AST and print code
+
+        if(ast.right.value.equals("content") && ast.right.right != null)
+        {
+            MakePcode(ast.right.right,symbolTable);
+        }
 
         //region tests assigned addresses
         /*
         //TODO: this code will be deleted. use it to check variable address. see it in console.
         System.out.println("\n*******************************************");    //TODO: REMOVE THIS. used to check if assigned address is correct
         System.out.println("********      ADDRESS TESTING     *********\n");    //TODO: REMOVE THIS. used to check if assigned address is correct
-        System.out.println("Address of f:" + symbolTable.m_SymbolTable.get("f").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
-        System.out.println("Address of e:" + symbolTable.m_SymbolTable.get("e").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of l:" + symbolTable.m_SymbolTable.get("l").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of p:" + symbolTable.m_SymbolTable.get("p").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of k:" + symbolTable.m_SymbolTable.get("k").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of j:" + symbolTable.m_SymbolTable.get("j").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        //System.out.println("Address of i:" + symbolTable.m_SymbolTable.get("i").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        //System.out.println("Address of h:" + symbolTable.m_SymbolTable.get("h").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        //System.out.println("Address of g:" + symbolTable.m_SymbolTable.get("g").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        //System.out.println("Address of f:" + symbolTable.m_SymbolTable.get("f").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        //System.out.println("Address of e:" + symbolTable.m_SymbolTable.get("e").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
         System.out.println("Address of d:" + symbolTable.m_SymbolTable.get("d").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
         System.out.println("Address of c:" + symbolTable.m_SymbolTable.get("c").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
         System.out.println("Address of b:" + symbolTable.m_SymbolTable.get("b").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
+        System.out.println("Address of a:" + symbolTable.m_SymbolTable.get("a").GetAddress() );    //TODO: REMOVE THIS. used to check if assigned address is correct
         System.out.println("\n*********  END OF ADDRESS TESTING  ********");    //TODO: REMOVE THIS. used to check if assigned address is correct
         System.out.println("*******************************************\n");    //TODO: REMOVE THIS. used to check if assigned address is correct
         */
         //endregion
-
-        if(ast.right.value.equals("content") && ast.right.right != null)
-        {
-            MakePcode(ast.right.right,symbolTable);
-        }
     }
 
+    /**
+     *  CheckIfInd Gets an AST node of the tree and a side factor (left-subTree or right-subTree),
+     *  and decide rather to print "IND" command or not.
+     *
+     *  p_tree: an AST;
+     *  side: an Integer: 0 for left, 1 for right.
+     *
+     * **/
     private static void CheckIfInd(AST p_tree, int side)
     {
         switch (side)
@@ -330,9 +391,9 @@ class homework1
             case 0: // left
             {
                 if(p_tree!=null && p_tree.left != null &&
-                           (p_tree.left.value.contains("identifier")
-                        || p_tree.left.value.contains("record")
-                        || p_tree.left.value.contains("array"))) //<LEEOR_ADDING> also checks if need to use ind for the left
+                        (p_tree.left.value.contains("identifier")
+                                || p_tree.left.value.contains("record")
+                                || p_tree.left.value.contains("array"))) //<LEEOR_ADDING> also checks if need to use ind for the left
                 {
                     System.out.println("ind");
                 }
@@ -355,6 +416,16 @@ class homework1
 
     }
 
+
+    /**
+     * GetArrayName returns an Variable of the current Array.
+     * This method is used where PCode should access an array, but there are no direct or explicit values of it at the tree
+     * (such as variable's name). The method finds the correct array and returns it's variable from the SymbolTable.
+     *
+     * p_tree: an AST;
+     * p_symbolTable: a symbolTable.
+     *
+     * **/
     private static Variable GetArrayName(AST p_tree, SymbolTable p_symbolTable)
     {
         Variable CurrentArray = null;
@@ -375,16 +446,25 @@ class homework1
         else if((p_tree.left.value.equals("array")))
         {
             CurrentArray = GetArrayName(p_tree.left, p_symbolTable);
-
-            {
-                CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetType());
-            }
+            CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetType());
         }
-
         return CurrentArray;
     }
 
-    //<LEEOR_ADDING HandleArrayPcode>
+    /**
+     * HandleArrayPcode is an recursive method.
+     * The method is responsible for generate the PCode inside an array correctly-
+     * that includes printing all "LDC", "IXA", "DEC" and other commands.
+     *
+     * this method also uses the "MakePcode" method to generate any part of current array that is out of it's own boundaries
+     * (i.e. an indexList of the array that contains a value of another record/array).
+     *
+     * p_arrayName: the name of the variable holds the current array.
+     * p_dimNum: the Number of dimensions of the current array.
+     * p_tree: an AST.
+     * p_symbolTable: a SymbolTable.
+     *
+     * **/
     private static void HandleArrayPcode(String p_arrayName, int p_dimNum, AST p_tree, SymbolTable p_symbolTable)
     {
         if(p_tree == null) {return;}
@@ -393,25 +473,24 @@ class homework1
 
         if(p_tree.value.equals("indexList"))
         {
-          MakePcode(p_tree.right,p_symbolTable);
+            MakePcode(p_tree.right,p_symbolTable);
 
-          if((p_tree.right.value.equals("record"))||(p_tree.right.value.equals("identifier")))  //TODO check if condition always correct
-            System.out.println("ind"); //
+            if((p_tree.right.value.equals("record"))||(p_tree.right.value.equals("identifier"))  //TODO check if condition always correct
+                    || p_tree.right.value.equals("array")) // <LEEOR_ADDING_TODAY> I added this "array" condition to the total if condition
+                System.out.println("ind"); //
 
 
-          //if((p_dimNum) >= 0) //TODO <ORON> ADDED CONDITION
+            //if((p_dimNum) >= 0) //TODO <ORON> ADDED CONDITION
             {
-
-              int CurrentIxa = p_symbolTable.m_SymbolTable.get(p_arrayName).dimensionsList.get(p_dimNum).ixa;
-              System.out.println("ixa " + Integer.toString(CurrentIxa));
+                int CurrentIxa = p_symbolTable.m_SymbolTable.get(p_arrayName).dimensionsList.get(p_dimNum).ixa;
+                System.out.println("ixa " + Integer.toString(CurrentIxa));
             }
         }
     }
 
-    //region PrintReverseCases to handle CaseList <LEEOR-ADDING>
-
     /**
-     * This recursive method is made to print all cases in reverse order, for the last part of an switch condition.
+     * PrintReverseCases is a recursive method.
+     * this method prints all cases of an Switch condition in reverse order, for the last part of an switch-condition PCode.
      *
      * PrintReverseCades gets as parameter an AST node (p_tree), acpected to contain "caseList" value;
      * The method prints in correct ordedr (right to left) all the cases under the given AST.
@@ -436,8 +515,6 @@ class homework1
             PrintReverseCases(CasePointer);
         }
     }
-    //endregion
-
 
 
     private static void MakePcode(AST p_tree, SymbolTable p_symbolTable)
@@ -452,13 +529,13 @@ class homework1
             int label_1 = m_LableNumber++;
             int label_2 = m_LableNumber++;
 
-            System.out.println("L" + label_1 + ":");
+            System.out.println("while_" + label_1 + ":");
             MakePcode(p_tree.left,p_symbolTable);
-            System.out.println("fjp L" + label_2);
+            System.out.println("fjp while_out_" + label_2);
 
             MakePcode(p_tree.right,p_symbolTable);
-            System.out.println("ujp L" + label_1);
-            System.out.println("L" + label_2 + ":");
+            System.out.println("ujp while_" + label_1);
+            System.out.println("while_out_" + label_2 + ":");
             return;
         }
         //endregion
@@ -466,6 +543,7 @@ class homework1
         //region Generate Left SubTree
         if(!p_tree.value.equals("case"))        //TODO <ORON> ADDED CONDITION. left tree added unwanted ldc
             MakePcode(p_tree.left, p_symbolTable);
+
         switch (currentValue)
         {
             case "plus":
@@ -489,7 +567,7 @@ class homework1
                 CheckIfInd(p_tree,0); // checks if left sub-tree has identifier
                 break;
             }
-            case "case":  // <LEEOR_ADDING>
+            case "case": // inside an Switxh statement
                 if(p_tree.left != null && p_tree.left.left != null)
                 {
                     System.out.println("case_" + m_LableNumber + "_" +p_tree.left.left.value+":");
@@ -497,53 +575,62 @@ class homework1
 
             default: break;
         }
+
         //endregion
 
         //region Handle If statement
-        if(currentValue.contains("if") && p_tree.right != null && (p_tree.right.right == null || p_tree.right.left == null)) // if without else condition
+        if(currentValue.contains("if") && p_tree.right != null &&
+                (p_tree.right.right == null || p_tree.right.left == null)) // If statement without else condition
         {
             int label = m_LableNumber++;
-            System.out.println("fjp L" + label);
+            System.out.println("fjp skip_if_" + label);
             MakePcode(p_tree.right, p_symbolTable);
-            System.out.println("L" + label + ":");
+            System.out.println("skip_if_" + label + ":");
             return;
         }
-        else if(currentValue.contains("if") && p_tree.right != null && p_tree.right.right != null) // if with else condition
+        else if(currentValue.contains("if") && p_tree.right != null && p_tree.right.right != null) // If statement with 'else' condition
         {
             int label_1 = m_LableNumber++;
-            int label_2 = m_LableNumber++;
-
-            System.out.println("fjp L" + label_1);
+            System.out.println("fjp skip_if_" + label_1);
             MakePcode(p_tree.right.left, p_symbolTable);
-            System.out.println("ujp L" + label_2);
-            System.out.println("L" + label_1 + ":");
-            MakePcode(p_tree.right.right,p_symbolTable);
-            System.out.println("L" + label_2 + ":");
+
+            if(!p_tree.right.value.equals("else")) // there is a 'break' in the right sub tree instead of 'else'
+            {
+                m_LableNumber--; //<LEEOR> TODO: CHECK IF CORRECT (made for a 'break' at 'else' right-sub-tree)
+                MakePcode(p_tree.right.right, p_symbolTable);
+                m_LableNumber++; //<LEEOR> TODO: CHEcK IF CORRECT (made for a 'break' at 'else' right-sub-tree)
+                System.out.println("skip_if_" + label_1 + ":");
+                return;
+            }
+
+            // ordinary 'else; condition
+            int label_2 = m_LableNumber++;
+            System.out.println("ujp skip_else_" + label_2);
+            System.out.println("skip_if_" + label_1 + ":");
+            MakePcode(p_tree.right.right, p_symbolTable);
+            System.out.println("skip_else_" + label_2 + ":");
+
             return;
         }
 
-//        if (currentValue.equals("array")) {
-//            int address = SymbolTable.m_SymbolTable.get(p_tree.left.left.value).Address;
-//            System.out.println("ldc " + address);
-//        }
         //endregion
 
-        //region Handle Switch statement - first part (inorder) <LEEOR_ADDING>
+        //region Handle Switch statement - first part (inorder)
 
-        int currentSwitchNumber = m_LableNumber; //TODO: <ORON> CHANGED FROM switchnumber to labelnumber <LEEOR> : WRONG_OPTION_A
-        if(currentValue.contains("switch"))
+        if(currentValue.equals("switch"))
         {
+            int currentSwitchNumber = m_LableNumber; //TODO: <ORON> CHANGED FROM switchnumber to labelnumber <LEEOR> : WRONG_OPTION_A
             CheckIfInd(p_tree, 0);/***<LEEOR> TODO: MAKE SURE TO PUT HERE CHECK IF IND (LEFT)***/
             m_SwitchNumber++;
 
             System.out.println("neg");
             System.out.println("ixj switch_end_"+ Integer.toString(currentSwitchNumber));
-            m_SwitchNumber++;//<LEEOR> : WRONG_OPTION_A
+            m_SwitchNumber++;
         }
 
         //endregion
 
-        //region Handle Array <LEEOR_ADDING>
+        //region Handle Array
 
         if(p_tree.value.equals("array"))
         {
@@ -561,14 +648,17 @@ class homework1
 
             if(CurrentArray.GetType().equals("pointer") )    //TODO <ORON> ADDED CODE
             {
-                while (CurrentArray.GetType().equals("pointer")) {
+                while(CurrentArray.GetType().equals("pointer"))
+                {
                     CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetPointerOf());
                 }
-                //CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetPointerOf());
+
+                // CurrentArray = p_symbolTable.m_SymbolTable.get(CurrentArray.GetPointerOf());    //<ORON> this line moved into the while loop above to avoid null
             }
 
             HandleArrayPcode(CurrentArray.GetName(), CurrentArray.dimensionsList.size()-1, p_tree.right, p_symbolTable);
             String ArraySubpart = Integer.toString(CurrentArray.GetSubpart());
+
             System.out.println("dec " + ArraySubpart);
             return;
         }
@@ -582,7 +672,7 @@ class homework1
         if (p_tree.value.equals("record"))
             rightTreeSide = true;
 
-        switch (currentValue)
+        switch (currentValue) // relevant cases for IND command after generated right subTree ("assignment" has a different case later)
         {
             case "plus":
             case "minus":
@@ -680,9 +770,9 @@ class homework1
 
             //endregion
 
-            case "break": //<LEEOR_ADDING> TODO: need to check if that is enough, maybe need to be more complex
+            case "break":
             {
-                System.out.println("ujp L " + (m_LableNumber-1));
+                System.out.println("ujp while_out_" + (m_LableNumber-1));
                 break;
             }
 
@@ -730,11 +820,10 @@ class homework1
             case "greaterOrEquals":
                 System.out.println("geq");
                 break;
-            case "assignment": {
-
-                if (p_tree.right.value.equals("record")) //<ORON>
-                    CheckIfInd(p_tree.right, 1);   //<ORON>
-
+            case "assignment":
+            {
+                if (p_tree.right.value.equals("record") || p_tree.right.value.equals("array")) //<LEEOR_ADDING_TODAY>
+                {CheckIfInd(p_tree, 1);}   //<LEEOR_ADDING_TODAY>
                 System.out.println("sto");
                 break;
             }
