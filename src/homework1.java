@@ -188,6 +188,20 @@ class homework1
             return sum;
         }
 
+        public static int GetFuncVariablesSize(AST p_tree)  //<ORON> calculates the size of all variables under a certain node
+        {
+            if (p_tree == null)
+                return 0;
+            int sum = GetFuncVariablesSize(p_tree.left);
+            if ((p_tree.right != null) && (p_tree.right.value.equals("byValue"))) //<LEEOR>TODO: Check if that is enough to habdle "byValue" cases
+            {
+
+                sum += GetTypeSize(p_tree.right.left.value);
+            }
+            return sum;
+        }
+
+
         /**
          * SetAllOffestsInRecord is a recursive method;
          * The method gets an sub-tree of an record, and define the offset value for any direct member of this record;
@@ -294,6 +308,7 @@ class homework1
                     System.out.println(">>>>>>new var:\tname=" +new_variable.GetName() + "\tsize=" +Integer.toString(new_variable.GetSize()));  //<LEEOR> TEST
 
 
+
                 }
                 else if ((p_tree.right.value!= null) && (p_tree.right.value.equals("record")))
                 {
@@ -320,6 +335,9 @@ class homework1
 
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
                     System.out.println(">>>>>>new var:\tname=" +new_variable.GetName() + "\tsize=" +Integer.toString(new_variable.GetSize())); //<LEEOR> TEST
+                    System.out.println("<ORON> var name:" + new_variable.GetName());
+                    System.out.println("<ORON> var type:" + new_variable.GetType());
+
                 }
 
                 else // any other type of variable
@@ -335,9 +353,13 @@ class homework1
                     {
                         new_variable.SetPointerOf(p_tree.right.left.left.value);
                     }
+
+
                     CurrentAvailableAddress += new_variable.Size;
                     p_symbolTable.m_SymbolTable.put(new_variable.GetName(),new_variable);
                     System.out.println(">>>>>>new var:\tname=" +new_variable.GetName() + "\tsize=" +Integer.toString(new_variable.GetSize()));  //<LEEOR> TEST
+                    System.out.println("<ORON> var name:" + new_variable.GetName());
+                    System.out.println("<ORON> var type:" + new_variable.GetType());
                     return;
                 }
             }
@@ -364,18 +386,18 @@ class homework1
             CurrentAvailableAddress = TABLE_START_ADDRESS;
             if(p_tree.right!=null && p_tree.right.left != null && p_tree.right.left.left!=null)
             {
-                System.out.println(">>>>>>TEST_1: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
+                System.out.println(">>>>>>**TEST_1: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
                 FillSymbolTable(p_symbolTable,p_tree.left.right.left, funcName); // function parameters
-                System.out.println(">>>>>>TEST_2: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
+                System.out.println(">>>>>>**TEST_2: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
                 FillSymbolTable(p_symbolTable,p_tree.right.left.left, funcName); // function member variables
-                System.out.println(">>>>>>TEST_3: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
+                System.out.println(">>>>>>**TEST_3: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
             }
             Variable new_var = new Variable();
             new_var.SetName(funcName);
             new_var.SetFunctionName(funcName);
             new_var.SetSize(0);
             new_var.SetAddress(0);
-            new_var.SetSSP(CurrentAvailableAddress);
+
             switch (p_tree.value)
             {
                 case "program":
@@ -388,8 +410,22 @@ class homework1
                     new_var.SetType("function");
                     break;
             }
+
+            /*if ((p_tree.value.equals("program")) || (p_tree.value.equals("function")) || (p_tree.value.equals("procedure")) &&  //<ORON> TODO: this should be general for function as well?
+                    (p_tree.left.right.left != null))//<ORON> added condition for variable of function, to calc correct SSP
+            {
+                int totalVarsSize = 0 ;
+                totalVarsSize = GetFuncVariablesSize(p_tree.left.right.left);
+                System.out.println("%%%%%totalVarsSize is: " + totalVarsSize);   //TODO: for testings only - DELETE THIS
+                new_var.SetSSP(CurrentAvailableAddress + totalVarsSize);    //<ORON> this corrects the ssp value to include the size of sent variables
+            }*/
+            new_var.SetSSP(CurrentAvailableAddress);
+
+
             p_symbolTable.m_SymbolTable.put(funcName,new_var);
             System.out.println(">>>>>>new var:\tname=" +new_var.GetName() + "\tsize=" +Integer.toString(new_var.GetSize()));
+            System.out.println("<ORON> var name:" + new_var.GetName()); //<ORON> added test code
+            System.out.println("<ORON> var type:" + new_var.GetType());
             p_symbolTable.m_FunctionTable.put(funcName,p_father);
             if(p_tree.right!=null
                     && p_tree.right.left!=null
@@ -420,6 +456,7 @@ class homework1
 
         // print ssp:
         System.out.println("ssp " + Integer.toString(CurrentFunc.SSP));
+        System.out.println("current ADD: " + Integer.toString(CurrentAvailableAddress));
 
         // print ujp
         System.out.println("ujp "+CurrentFunc.GetName()+"_begin");
@@ -758,6 +795,7 @@ class homework1
 
         switch (currentValue) // relevant cases for IND command after generated right subTree ("assignment" has a different case later)
         {
+            case "argumentList":    //<ORON> TODO: added case. check if needed on left subtree as well
             case "plus":
             case "minus":
             case "multiply":
@@ -828,7 +866,6 @@ class homework1
 
                 if((rightTreeSide) && (p_symbolTable.m_SymbolTable.get(p_tree.left.value) != null))    //This if statement fix the unwanted "ldc" print for right hand son
                 System.out.println("lda 0 " + p_symbolTable.m_SymbolTable.get(p_tree.left.value).Address); //<ORON> TODO: change this to general function. changed this line from ldc to lda
-
                 break;
             }
 
@@ -924,6 +961,12 @@ class homework1
             case "false":
             {
                 System.out.println("ldc 0");
+                break;
+            }
+
+            case "call":
+            {
+                System.out.println("cup " + p_symbolTable.GetFuncVariablesSize(p_tree.right) + " " + p_symbolTable.m_SymbolTable.get(p_tree.left.left.value).GetName()); //<ORON> TODO: check if variables size is always correct?
                 break;
             }
 
