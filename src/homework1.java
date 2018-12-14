@@ -104,6 +104,7 @@ class homework1
     {
         // Properties
         public static Hashtable<String, Variable> m_SymbolTable;
+        public static Hashtable<String, Variable> m_Functions;
         public static Hashtable<String, String> m_FunctionTable; // saves every function and its father
 
         // C'tor
@@ -111,6 +112,7 @@ class homework1
         {
             m_SymbolTable = new Hashtable<>();
             m_FunctionTable = new Hashtable<>();
+            m_Functions = new Hashtable<>();
             CurrentAvailableAddress = TABLE_START_ADDRESS;
         }
 
@@ -122,6 +124,12 @@ class homework1
             FillFunctionDetails(table,tree,"");
 
             return table;
+        }
+
+        private static boolean ContainsVar(String p_varName)
+        {
+            if(m_SymbolTable.containsKey(p_varName)) return true;
+            else return m_SymbolTable.containsKey(p_varName+"_"+CurrentFunction);
         }
 
         /**
@@ -148,13 +156,18 @@ class homework1
                     result = 1;
                     break;
                 }
-
                 default:
                 {
-                    if(m_SymbolTable.containsKey(type))
+                    if(ContainsVar(type))
                     {result = GetVar(m_SymbolTable,type,CurrentFunction).GetSize();}
+                    else if(m_Functions.containsKey(type))
+                    {
+                        System.out.println(type + " is in m_Functions");
+                        result = 2;
+                    }
                     else
                     {
+                        System.out.println(type + " is in not in m_Functions");
                         result = 1;
                     }
                     break;
@@ -165,7 +178,7 @@ class homework1
 
         private static void PutNewVar(Variable p_NewVar)
         {
-            if(!m_SymbolTable.containsKey(p_NewVar.GetName()))
+            if(!ContainsVar(p_NewVar.GetName()))
             {
                 m_SymbolTable.put(p_NewVar.GetName(),p_NewVar);
             }
@@ -205,16 +218,16 @@ class homework1
             if (p_tree == null)
                 return 0;
             int sum = GetFuncVariablesSize(p_tree.left);
-
-            if ((p_tree.right != null) && (p_tree.right.value.equals("identifier"))) //<ORON>
+            if ((p_tree.right != null) &&
+                    ((p_tree.right.value.equals("byValue"))
+                            || (p_tree.right.value.equals("identifier")))) //<LEEOR>TODO: Check if that is enough to habdle "byValue" cases
             {
                 sum += GetTypeSize(p_tree.right.left.value);
             }
-            else if (p_tree.right != null)
+            else if(p_tree.right != null)
             {
-                sum+= 1;    //other options size always equals 1
+                sum += 1;   //other options size is always 1
             }
-
             return sum;
         }
 
@@ -360,9 +373,17 @@ class homework1
                 {
                     Variable new_variable = new Variable();
                     new_variable.SetFunctionName(p_FunctionName);
-                    new_variable.SetType(p_tree.right.value);
+                    if(p_tree.right.value.equals("identifier"))
+                    {
+                        new_variable.SetType(p_tree.right.left.value);
+                    }
+                    else new_variable.SetType(p_tree.right.value);
                     new_variable.SetAddress(CurrentAvailableAddress);
-                    new_variable.SetSize(GetTypeSize(p_tree.right.value));
+                    if(p_tree.right.value.equals("identifier"))
+                    {
+                        new_variable.SetSize(GetTypeSize(p_tree.right.left.value));
+                    }
+                    else new_variable.SetSize(GetTypeSize(p_tree.right.value));
                     new_variable.SetName(p_tree.left.left.value);
 
                     if((p_tree.right.value.equals("pointer")) && (p_tree.right.left.value.equals("identifier")))
@@ -417,7 +438,7 @@ class homework1
             }
             System.out.println(">>>>>>**TEST_variables: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
 
-            Variable new_var = new Variable();
+            Variable new_var = new Variable(); // Create variable for function
             new_var.SetName(funcName);
             new_var.SetFunctionName(funcName);
             new_var.SetSize(0);
@@ -438,23 +459,34 @@ class homework1
 
             new_var.SetSSP(CurrentAvailableAddress);
 
-
-            PutNewVar(new_var);
-            System.out.println(">>>>>>new var:\tname=" +new_var.GetName() + "\tsize=" +Integer.toString(new_var.GetSize()));
+            //PutNewVar(new_var);
+            m_Functions.put(new_var.GetName(),new_var);
+            System.out.println(">>>>>>new funcVar:\tname=" +new_var.GetName() + "\tsize=" +Integer.toString(new_var.GetSize()));
             System.out.println("<ORON> var name:" + new_var.GetName()); //<ORON> added test code
             System.out.println("<ORON> var type:" + new_var.GetType());
             p_symbolTable.m_FunctionTable.put(funcName,p_father);
+
             if(p_tree.right!=null
                     && p_tree.right.left!=null
                     && p_tree.right.left.right!=null)
             {
-                AST CurrFunctList = p_tree.right.left.right;
-                while (CurrFunctList!=null)
+                AST FunctList = p_tree.right.left.right;
+                if(FunctList.value.equals("functionsList"))
                 {
-                    FillFunctionDetails(p_symbolTable,CurrFunctList.right,funcName);
-                    CurrentFunction = funcName;
-                    CurrFunctList = CurrFunctList.left;
+                    HandleFunctionList(p_symbolTable,FunctList,funcName);
                 }
+            }
+        }
+
+        private static void HandleFunctionList(SymbolTable p_SymbolTable, AST p_tree, String p_funcName)
+        {
+            if(p_tree==null) return;
+            HandleFunctionList(p_SymbolTable,p_tree.left,p_funcName);
+            if(p_tree.right!=null )
+            {
+                CurrentFunction = p_funcName;
+                FillFunctionDetails(p_SymbolTable,p_tree.right,p_funcName);
+                CurrentFunction = p_funcName;
             }
         }
     }
@@ -466,7 +498,8 @@ class homework1
         if(ast == null) return;
 
         String FuncName = ast.left.left.left.value;
-        Variable CurrentFunc = GetVar(symbolTable.m_SymbolTable,FuncName,FuncName);
+        Variable CurrentFunc = GetVar(symbolTable.m_Functions,FuncName,FuncName);
+        //Variable CurrentFunc = SymbolTable.m_Functions.get(FuncName);
         CurrentFunction = CurrentFunc.GetName();
         //region Print function header
 
@@ -657,12 +690,21 @@ class homework1
         }
     }
 
+//    private static void PrintMSTF(String p_origin, String p_dest, SymbolTable p_Table)
+//    {
+//        int FirstParam = GetLdaDistance(p_origin,p_dest,p_Table);
+//        int SecondParam =
+//
+//    }
+
     private static int GetMST(String p_origin, String p_dest, SymbolTable p_Table)
     {
         int counter=1;
         String pointer;
         if(p_dest.equals(p_origin)) return 1; // dest is origin
+
         pointer = p_Table.m_FunctionTable.get(p_dest);
+
         if(pointer.equals(p_origin)) return 0; // dest is son of origin
         pointer = p_origin;
         while(!pointer.equals(""))
@@ -702,10 +744,39 @@ class homework1
         else return p_Table.get(p_VarName+"_"+p_CurrentFunction);
     }
 
+    private static int HandleCallArguments(AST p_tree, SymbolTable p_symbolTable, String p_CurrentFunction)
+    {
+        if(p_tree==null) return 0;
+        int argumentsSize = 0;
+        argumentsSize+= HandleCallArguments(p_tree.left,p_symbolTable,p_CurrentFunction);
+
+        if(p_tree.right!=null && p_tree.right.value.equals("identifier"))
+        {
+            if(p_tree.right.left!=null && p_symbolTable.m_Functions.containsKey(p_tree.right.left.value))
+            {
+                System.out.println("ldc " + p_tree.right.left.value);
+                System.out.println("lda "+ GetLdaDistance(p_CurrentFunction, p_symbolTable.m_FunctionTable.get(p_tree.right.left.value),p_symbolTable) + " 1");
+
+                argumentsSize+=2;
+            }
+            else // is identifier but not function
+            {
+                MakePcode(p_tree.right, p_symbolTable,p_CurrentFunction);
+                argumentsSize+=p_symbolTable.GetTypeSize(p_tree.right.left.value);
+            }
+        }
+        else // not identifier
+        {
+            MakePcode(p_tree.right,p_symbolTable,p_CurrentFunction);
+            argumentsSize++;
+        }
+        return argumentsSize;
+    }
+
     private static void MakePcode(AST p_tree, SymbolTable p_symbolTable, String p_CurrentFunction)
     {
         if(p_tree == null) {return;}
-
+        String mstfPrint = "";
         String currentValue = (String)p_tree.value;
 
         //region Handle While statement
@@ -729,14 +800,28 @@ class homework1
 
         if(currentValue.contains("call"))
         {
-            System.out.println("mst " + GetMST(CurrentFunction,p_tree.left.left.value,p_symbolTable));
+
+            if(!p_symbolTable.m_FunctionTable.containsKey(p_tree.left.left.value))
+            {
+                int LdaDistance = 0;
+                if((GetVar(p_symbolTable.m_SymbolTable,p_tree.left.left.value,CurrentFunction) != null))    //This if statement fix the unwanted "ldc" print for right hand son
+                    LdaDistance = GetLdaDistance(p_CurrentFunction, GetVar(p_symbolTable.m_SymbolTable,p_tree.left.left.value,CurrentFunction).GetFunctionName(), p_symbolTable);
+
+                mstfPrint = Integer.toString(LdaDistance) + " " + GetVar(p_symbolTable.m_SymbolTable,p_tree.left.left.value,CurrentFunction).GetAddress(); //<ORON> TODO: change this to general function. changed this line from ldc to lda
+                System.out.println("mstf " + mstfPrint);
+            }
+
+            else System.out.println("mst " + GetMST(CurrentFunction,p_tree.left.left.value,p_symbolTable));
         }
 
         //endregion
 
-
         //region Generate Left SubTree
-        if(!p_tree.value.equals("case") && !currentValue.equals("call"))
+        if(p_tree.value.equals("assignment") && p_tree.left!=null && p_tree.left.value.equals("identifier") && p_tree.left.left!=null && p_tree.left.left.value.equals(CurrentFunction))
+        {
+            System.out.println("lda 0 0");
+        }
+        else if(!currentValue.equals("case") && !currentValue.equals("call")) // <LEEOR> TODO: MST CHANGE, ADD THIS LINE TO CURRENT CONDITION (ADDED && RIGHT SIDE)
             MakePcode(p_tree.left, p_symbolTable, p_CurrentFunction);
 
         switch (currentValue)
@@ -861,7 +946,8 @@ class homework1
         //region Generate Right SubTree
         if (p_tree.value.equals("record"))
             rightTreeSide = false;  //This variable fix the unwanted "ldc" print of right hand son
-        MakePcode(p_tree.right, p_symbolTable, p_CurrentFunction);
+        if(!p_tree.value.equals("call"))
+            MakePcode(p_tree.right, p_symbolTable, p_CurrentFunction);
         if (p_tree.value.equals("record"))
             rightTreeSide = true;
 
@@ -935,13 +1021,22 @@ class homework1
 
             case "identifier":
             {
-                int LdaDistance = 0;
-                if((rightTreeSide) && (GetVar(p_symbolTable.m_SymbolTable,p_tree.left.value,CurrentFunction) != null))    //This if statement fix the unwanted "ldc" print for right hand son
-                    LdaDistance = GetLdaDistance(p_CurrentFunction, GetVar(p_symbolTable.m_SymbolTable,p_tree.left.value,CurrentFunction).GetFunctionName(), p_symbolTable);
-                System.out.println("lda " + Integer.toString(LdaDistance) + " " + GetVar(p_symbolTable.m_SymbolTable,p_tree.left.value,CurrentFunction).GetAddress()); //<ORON> TODO: change this to general function. changed this line from ldc to lda
+                if(!p_symbolTable.ContainsVar(p_tree.left.value))
+                {
+                    //System.out.println("ldc " + p_tree.left.value);
+                    //System.out.println("lda "+ GetLdaDistance(p_CurrentFunction, p_symbolTable.m_FunctionTable.get(p_tree.left.value),p_symbolTable) + " 1");
+                }
+                else
+                {
+                    int LdaDistance = 0;
+                    if((rightTreeSide) && (GetVar(p_symbolTable.m_SymbolTable,p_tree.left.value,CurrentFunction) != null))    //This if statement fix the unwanted "ldc" print for right hand son
+                    {
+                        LdaDistance = GetLdaDistance(p_CurrentFunction, GetVar(p_symbolTable.m_SymbolTable,p_tree.left.value,CurrentFunction).GetFunctionName(), p_symbolTable);
+                    }
+                    System.out.println("lda " + Integer.toString(LdaDistance) + " " + GetVar(p_symbolTable.m_SymbolTable,p_tree.left.value,CurrentFunction).GetAddress()); //<ORON> TODO: change this to general function. changed this line from ldc to lda
+                }
                 break;
             }
-
 
             //region All cases of Switch - second part (post-order) <LEEOR_ADDING>
             case "switch":
@@ -1039,7 +1134,22 @@ class homework1
 
             case "call":
             {
-                System.out.println("cup " + p_symbolTable.GetFuncVariablesSize(p_tree.right) + " " + GetVar(p_symbolTable.m_SymbolTable,p_tree.left.left.value,CurrentFunction).GetName()); //<ORON> TODO: check if variables size is always correct?
+                int CupArgumentSize = HandleCallArguments(p_tree.right,p_symbolTable,p_CurrentFunction);
+
+                if(!p_symbolTable.m_FunctionTable.containsKey(p_tree.left.left.value))
+                {
+                    System.out.println("smp " + Integer.toString(p_symbolTable.GetFuncVariablesSize(p_tree.right)));
+                    //int LdaDistance = 0;
+                    //if((GetVar(p_symbolTable.m_SymbolTable,p_tree.left.left.value,CurrentFunction) != null))    //This if statement fix the unwanted "ldc" print for right hand son
+                    //   LdaDistance = GetLdaDistance(p_CurrentFunction, GetVar(p_symbolTable.m_SymbolTable,p_tree.left.left.value,CurrentFunction).GetFunctionName(), p_symbolTable);
+                    //System.out.println("cupi " + Integer.toString(LdaDistance) + " " + GetVar(p_symbolTable.m_SymbolTable,p_tree.left.left.value,CurrentFunction).GetAddress()); //<ORON> TODO: change this to general function. changed this line from ldc to lda
+                    System.out.println("cupi " + mstfPrint);
+                }
+                else
+                {
+                    System.out.println("cup " + Integer.toString(CupArgumentSize) + " " + p_tree.left.left.value);
+
+                }
                 break;
             }
 
