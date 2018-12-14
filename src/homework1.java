@@ -11,6 +11,7 @@ class homework1
     public static boolean rightTreeSide = true;
     public static int m_SwitchNumber = -1; // starts from -1 since every switch we start with ++ and ending it with -- operators
     public static int CurrentAvailableAddress;
+    public static int CountSSP;
     public static final int TABLE_START_ADDRESS = 5;
     public static ArrayList<Dimension> GlobalDimList;
     public static String CurrentFunction;
@@ -114,6 +115,7 @@ class homework1
             m_FunctionTable = new Hashtable<>();
             m_Functions = new Hashtable<>();
             CurrentAvailableAddress = TABLE_START_ADDRESS;
+            CountSSP = TABLE_START_ADDRESS;
         }
 
         // Methods
@@ -152,6 +154,7 @@ class homework1
                 case "constReal":
                 case "constBool":
                 case "pointer":
+                case "ByReference": // <LEEOR_BYREF> ONLY THIS LINE
                 {
                     result = 1;
                     break;
@@ -159,15 +162,18 @@ class homework1
                 default:
                 {
                     if(ContainsVar(type))
-                    {result = GetVar(m_SymbolTable,type,CurrentFunction).GetSize();}
+                    {
+                        //System.out.println(type + " is in m_SymbolTable, " + type+ " size=" + GetVar(m_SymbolTable,type,CurrentFunction).GetSize());
+                        result = GetVar(m_SymbolTable,type,CurrentFunction).GetSize();
+                    }
                     else if(m_Functions.containsKey(type))
                     {
-                        System.out.println(type + " is in m_Functions");
+                        //System.out.println(type + " is in m_Functions");
                         result = 2;
                     }
                     else
                     {
-                        System.out.println(type + " is in not in m_Functions");
+                        //System.out.println(type + " is in not in m_Functions");
                         result = 1;
                     }
                     break;
@@ -288,8 +294,10 @@ class homework1
                 FillSymbolTable(p_symbolTable,p_tree.left, p_FunctionName); // Check left sub-tree
             }
 
-            if((p_tree.value.equals("var") || p_tree.value.equals("byValue"))) // <LEEOR> TODO: is "byValue" correct?
+            if(p_tree.value.equals("var")
+                    || p_tree.value.equals("byValue"))
             {
+                String VarValue = p_tree.value;
 
                 if ((p_tree.right.value!= null) && (p_tree.right.value.equals("array")))
                 {
@@ -317,6 +325,10 @@ class homework1
                     TotalArraySize *= GetTypeSize(new_variable.GetType());
 
                     CurrentAvailableAddress += TotalArraySize;
+                    //CountSSP += TotalArraySize;
+
+
+
                     new_variable.SetSize(TotalArraySize);
 
                     int TotalIxa = GetTypeSize(new_variable.GetType());
@@ -334,9 +346,9 @@ class homework1
                     new_variable.SetSubpart(TotalSubpart);
 
                     PutNewVar(new_variable);
-                    System.out.println(">>>>>>new var:\tname=" +new_variable.GetName() + "\taddress=" +Integer.toString(new_variable.GetAddress()));  //<LEEOR> TEST
-
-
+                    System.out.println(">>>>>>new var array:\tname=" +new_variable.GetName() +
+                            "\taddress=" +Integer.toString(new_variable.GetAddress()) +
+                            "\tsize=" + Integer.toString(new_variable.GetSize()));  //<LEEOR> TEST
 
                 }
                 else if ((p_tree.right.value!= null) && (p_tree.right.value.equals("record")))
@@ -347,8 +359,11 @@ class homework1
                     new_variable.SetType(p_tree.right.value);
                     new_variable.SetAddress(CurrentAvailableAddress);
                     new_variable.SetName(p_tree.left.left.value);
-                    PutNewVar(new_variable);
-                    System.out.println(">>>>>>new var:\tname=" +new_variable.GetName() + "\taddress=" +Integer.toString(new_variable.GetAddress()));  //<LEEOR> TEST
+                    //PutNewVar(new_variable);
+
+                    System.out.println(">>>>>>new var Record1:\tname=" +new_variable.GetName() +
+                            "\taddress=" +Integer.toString(new_variable.GetAddress()) +
+                            "\tsize=" + Integer.toString(new_variable.GetSize()));  //<LEEOR> TEST
 
                     FillSymbolTable(p_symbolTable,p_tree.right.left, p_FunctionName); // Re-enter the fill function. Check left sub-tree.
 
@@ -358,12 +373,15 @@ class homework1
                     SetAllOffestsInRecord(p_symbolTable,p_tree.right.left);
                     offsetValue = 0; //Reset global offsetValue after the function
 
-                    ///<LEEOR_ADDING_TODAY_FINAL> end of my addition
-
                     new_variable.SetSize(GetRecordSize(p_tree.right.left)); // Sets the record size.
 
+                    //CountSSP += new_variable.GetSize(); <Leeor> do not add this line!!
+                    //System.out.println("SSP NOW IS: " + Integer.toString(CountSSP));
+
                     PutNewVar(new_variable);
-                    System.out.println(">>>>>>new var:\tname=" +new_variable.GetName() + "\taddress=" +Integer.toString(new_variable.GetAddress()));  //<LEEOR> TEST
+                    System.out.println(">>>>>>new var Record2:\tname=" +new_variable.GetName() +
+                            "\taddress=" +Integer.toString(new_variable.GetAddress()) +
+                            "\tsize=" + Integer.toString(new_variable.GetSize()));  //<LEEOR> TEST
                     System.out.println("<ORON> var name:" + new_variable.GetName());
                     System.out.println("<ORON> var type:" + new_variable.GetType());
 
@@ -392,14 +410,52 @@ class homework1
                     }
 
 
-                    CurrentAvailableAddress += new_variable.Size;
+                    CurrentAvailableAddress += new_variable.GetSize();
+                    //CountSSP += new_variable.GetSize();
+                    System.out.println("SSP NOW IS: " + Integer.toString(CountSSP));
+
                     PutNewVar(new_variable);
-                    System.out.println(">>>>>>new var:\tname=" +new_variable.GetName() + "\taddress=" +Integer.toString(new_variable.GetAddress()));  //<LEEOR> TEST
+                    System.out.println(">>>>>>new var other:\tname=" +new_variable.GetName() +
+                            "\taddress=" +Integer.toString(new_variable.GetAddress()) +
+                            "\tsize=" + Integer.toString(new_variable.GetSize()));  //<LEEOR> TEST
+
                     System.out.println("<ORON> var name:" + new_variable.GetName());
                     System.out.println("<ORON> var type:" + new_variable.GetType());
                     return;
                 }
             }
+            else if(p_tree.value.equals("byReference")) //<LEEOR BYREF> THIS WHOLE ELSE-IF
+            {
+                Variable newVar = new Variable();
+                newVar.SetName(p_tree.left.left.value);
+                newVar.SetSize(1);
+                newVar.SetType("byReference");
+                if(p_tree.right.value.equals("identifier"))
+                {
+                    newVar.SetPointerOf(p_tree.right.left.value);
+                }
+                else if(p_tree.right.value.equals("pointer"))
+                {
+                    newVar.SetPointerOf(p_tree.right.value);
+                }
+                else
+                {
+                    newVar.SetPointerOf(p_tree.right.left.left.value);
+                }
+                newVar.SetAddress(CurrentAvailableAddress);
+
+                CurrentAvailableAddress += 1;
+                //CountSSP += 1;
+                System.out.println("SSP NOW IS: " + Integer.toString(CountSSP));
+
+                newVar.SetFunctionName(p_FunctionName);
+                PutNewVar(newVar);
+                System.out.println(">>>>>>new ReferenceVar:\tname=" +newVar.GetName() +
+                        "\taddress=" +Integer.toString(newVar.GetAddress()) +
+                        "\tsize=" + Integer.toString(newVar.GetSize()) +
+                        "\tReference of:" + newVar.GetPointerOf());  //<LEEOR> TEST
+            }
+
             else if ((p_tree.value!= null) && (p_tree.value.equals("range")))
             {
                 Dimension dim = new Dimension();
@@ -412,6 +468,24 @@ class homework1
             else if(p_tree.right != null) {FillSymbolTable(p_symbolTable, p_tree.right, p_FunctionName);} // Check right sub-tree
         }
 
+        private static int CalculateSSP(AST p_tree) // <LEEOR SSP> whole function
+        {
+            int sum = 0;
+            if(p_tree==null) return sum;
+
+            sum += CalculateSSP(p_tree.left);
+            if(p_tree.right!= null &&  p_tree.right.left!=null && p_tree.right.left.left!=null &&
+                    (p_tree.right.value.equals("var")
+                            || p_tree.right.value.equals("byValue"))
+                    || p_tree.right.value.equals("byReference"))
+            {
+                sum += GetTypeSize(p_tree.right.left.left.value);
+                System.out.println("SSP + "+ p_tree.right.left.left.value +" size, new SSP=" + Integer.toString(sum+CountSSP));
+
+            }
+            return sum;
+        }
+
         private static void FillFunctionDetails(SymbolTable p_symbolTable, AST p_tree, String p_father)
         {
             if(p_tree==null)
@@ -422,21 +496,24 @@ class homework1
             CurrentFunction = funcName;
 
             CurrentAvailableAddress = TABLE_START_ADDRESS;
+            CountSSP = TABLE_START_ADDRESS;
 
-            System.out.println(">>>>>>**TEST_preset: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
+            System.out.println(">>>>>>**TEST_preset: SSP=" + Integer.toString(CountSSP));  //<LEEOR> TEST
             // Run over function parameters:
             if(p_tree.left!=null && p_tree.left.right != null && p_tree.left.right.left!=null)
             {
                 FillSymbolTable(p_symbolTable, p_tree.left.right.left, funcName); // function parameters
+                CountSSP+=CalculateSSP(p_tree.left.right.left);
             }
-            System.out.println(">>>>>>**TEST_parameters: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
+            System.out.println(">>>>>>**TEST_parameters: SSP=" + Integer.toString(CountSSP));  //<LEEOR> TEST
 
             // Run over function variables:
             if(p_tree.right!=null && p_tree.right.left != null && p_tree.right.left.left!=null)
             {
                 FillSymbolTable(p_symbolTable,p_tree.right.left.left, funcName); // function member variables
+                CountSSP+=CalculateSSP(p_tree.right.left.left);
             }
-            System.out.println(">>>>>>**TEST_variables: SSP=" + Integer.toString(CurrentAvailableAddress));  //<LEEOR> TEST
+            System.out.println(">>>>>>**TEST_variables: SSP=" + Integer.toString(CountSSP));  //<LEEOR> TEST
 
             Variable new_var = new Variable(); // Create variable for function
             new_var.SetName(funcName);
@@ -457,7 +534,12 @@ class homework1
                     break;
             }
 
-            new_var.SetSSP(CurrentAvailableAddress);
+            new_var.SetSSP(CountSSP);
+            //if(p_tree.right.left!=null && p_tree.right.left.left!=null)
+            //{
+            //    new_var.SetSSP(CalculateSSP(p_tree.right.left.left)+5); // put correct ssp in CountSSP global parameter
+            //}
+            //else new_var.SetSSP(5); //<LEEOR SSP> CHANGE ABOVE ROW WITH THIS ROW
 
             //PutNewVar(new_var);
             m_Functions.put(new_var.GetName(),new_var);
@@ -690,13 +772,6 @@ class homework1
         }
     }
 
-//    private static void PrintMSTF(String p_origin, String p_dest, SymbolTable p_Table)
-//    {
-//        int FirstParam = GetLdaDistance(p_origin,p_dest,p_Table);
-//        int SecondParam =
-//
-//    }
-
     private static int GetMST(String p_origin, String p_dest, SymbolTable p_Table)
     {
         int counter=1;
@@ -843,6 +918,10 @@ class homework1
             case "greaterOrEquals":
             case "print":
             {
+                if((p_tree.left != null) && (p_tree.left.value.equals("identifier")) && (p_tree.left.left != null)) //<ORON> Added 14.12
+                    if(p_symbolTable.m_Functions.containsKey(p_tree.left.left.value) && p_tree.left.left.value.equals(CurrentFunction))
+                        System.out.println("lda 0 0");
+
                 CheckIfInd(p_tree,0); // checks if left sub-tree has identifier
                 break;
             }
@@ -1034,6 +1113,11 @@ class homework1
                         LdaDistance = GetLdaDistance(p_CurrentFunction, GetVar(p_symbolTable.m_SymbolTable,p_tree.left.value,CurrentFunction).GetFunctionName(), p_symbolTable);
                     }
                     System.out.println("lda " + Integer.toString(LdaDistance) + " " + GetVar(p_symbolTable.m_SymbolTable,p_tree.left.value,CurrentFunction).GetAddress()); //<ORON> TODO: change this to general function. changed this line from ldc to lda
+
+                    if(GetVar(p_symbolTable.m_SymbolTable,p_tree.left.value,CurrentFunction).GetType().equals("byReference")) // <LEEOR BYREF> added that if
+                    {
+                        System.out.println("ind");
+                    }
                 }
                 break;
             }
@@ -1135,6 +1219,13 @@ class homework1
             case "call":
             {
                 int CupArgumentSize = HandleCallArguments(p_tree.right,p_symbolTable,p_CurrentFunction);
+
+                if((p_tree.right!=null) && (p_tree.right.right!=null) && (p_tree.right.right.value.equals("identifier")))
+                    if((p_tree.right.right.left!=null) && p_symbolTable.m_SymbolTable.containsKey(p_tree.right.right.left.value) && (p_symbolTable.m_SymbolTable.get(p_tree.right.right.left.value).GetSize()>1)) //<ORON> TODO: make general for function also. for now it's only on symboltable
+                    {
+                        int sizeOfFunc = p_symbolTable.m_SymbolTable.get(p_tree.right.right.left.value).GetSize();
+                        System.out.println("movs " + Integer.toString(sizeOfFunc));
+                    }
 
                 if(!p_symbolTable.m_FunctionTable.containsKey(p_tree.left.left.value))
                 {
